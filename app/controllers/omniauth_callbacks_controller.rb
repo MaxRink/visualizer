@@ -37,6 +37,11 @@ class OmniauthCallbacksController < ApplicationController
     oidc_failure("That OpenID Connect identity is already linked to another account.")
   end
 
+  def homelab_oidc_method_not_allowed
+    response.set_header("Allow", "POST")
+    head :method_not_allowed
+  end
+
   private
 
   def oidc_failure(message)
