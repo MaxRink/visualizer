@@ -1,11 +1,15 @@
 require "test_helper"
 
 class MetricsControllerTest < ActionDispatch::IntegrationTest
+  setup do
+    host! "visualizer.test"
+  end
+
   test "exports bounded HTTP metrics without request content" do
     get "/metrics"
 
     assert_response :success
-    assert_equal "text/plain", response.media_type
+    assert_equal "text/plain; version=0.0.4", response.media_type
     assert_includes response.body, "visualizer_http_requests_total"
     assert_not_includes response.body, "query"
     assert_not_includes response.body, "body"
