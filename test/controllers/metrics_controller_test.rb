@@ -63,4 +63,23 @@ class MetricsControllerTest < ActiveSupport::TestCase
       )
     end
   end
+
+  test "collector failure preserves the application response" do
+    failing = Object.new
+    def failing.register(*)
+      raise IOError, "collector unavailable"
+    end
+    VisualizerMetrics.client = failing
+
+    app = ->(_env) { [201, {"content-type" => "text/plain"}, ["accepted"]] }
+    response = VisualizerMetricsMiddleware.new(app).call(
+      "REQUEST_METHOD" => "GET",
+      "PATH_INFO" => "/health",
+      "QUERY_STRING" => "",
+      "rack.input" => StringIO.new
+    )
+
+    assert_equal 201, response[0]
+    assert_equal ["accepted"], response[2]
+  end
 end
