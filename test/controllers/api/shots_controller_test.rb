@@ -349,6 +349,23 @@ module Api
       assert_equal user.id, shot.user_id
     end
 
+    test "upload accepts a read and upload token without write access" do
+      token = create_access_token_for(user, scopes: "read upload")
+      file_content = JSON.parse(Rails.root.join("test/files/beanconqueror.json").read)
+
+      post upload_api_shots_url, headers: bearer_headers(token), params: file_content, as: :json
+
+      assert_response :success
+      shot = Shot.find(response.parsed_body["id"])
+      assert_equal user.id, shot.user_id
+      original_profile_title = shot.profile_title
+
+      patch api_shot_url(shot), headers: bearer_headers(token), params: {shot: {profile_title: "Must remain unchanged"}}, as: :json
+
+      assert_response :forbidden
+      assert_equal original_profile_title, shot.reload.profile_title
+    end
+
     test "upload rejects new shots at daily limit but accepts existing shots" do
       file_content = JSON.parse(Rails.root.join("test/files/beanconqueror.json").read)
       post upload_api_shots_url, headers: auth_headers(user), params: file_content, as: :json
@@ -575,9 +592,9 @@ module Api
       {"Authorization" => "Bearer #{token.token}"}
     end
 
-    def create_access_token_for(user)
+    def create_access_token_for(user, scopes: "read write upload")
       application = Doorkeeper::Application.create!(name: "Test App", owner: user, redirect_uri: "urn:ietf:wg:oauth:2.0:oob")
-      Doorkeeper::AccessToken.create!(application:, resource_owner_id: user.id, scopes: "read write upload", expires_in: 1.week)
+      Doorkeeper::AccessToken.create!(application:, resource_owner_id: user.id, scopes:, expires_in: 1.week)
     end
   end
 end
