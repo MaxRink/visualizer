@@ -27,6 +27,15 @@ module VisualizerMetrics
     )
   end
 
+  def http_duration_metric
+    @http_duration_metric ||= client.register(
+      :histogram,
+      "visualizer_http_request_duration_seconds",
+      "HTTP request duration in seconds.",
+      buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5]
+    )
+  end
+
   def client
     @client ||= PrometheusExporter::Client.new(
       host: ENV.fetch("PROMETHEUS_EXPORTER_HOST", "localhost"),
@@ -37,15 +46,19 @@ module VisualizerMetrics
   def client=(value)
     @client = value
     @http_metric = nil
+    @http_duration_metric = nil
     @jobs_metric = nil
   end
 
-  def observe_http(request, status)
+  def observe_http(request, status, duration_seconds = nil)
     route = request.path_parameters.values_at(:controller, :action).compact.join("#")
     route = "unmatched" if route.empty?
     method = METHODS.include?(request.request_method) ? request.request_method : "OTHER"
     status = status.to_i.between?(100, 599) ? status.to_i.to_s : "OTHER"
     http_metric.increment(method: method, route: route, status: status)
+    if duration_seconds
+      http_duration_metric.observe(duration_seconds.to_f, method: method, route: route, status: status)
+    end
   rescue StandardError => e
     Rails.logger.warn("Prometheus Exporter unavailable for HTTP metric: #{e.class}") if defined?(Rails)
   end
@@ -65,13 +78,16 @@ class VisualizerMetricsMiddleware
   end
 
   def call(env)
+    started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     status, headers, body = @app.call(env)
     request = ActionDispatch::Request.new(env)
-    VisualizerMetrics.observe_http(request, status)
+    duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at
+    VisualizerMetrics.observe_http(request, status, duration)
     [status, headers, body]
   rescue Exception
     request = ActionDispatch::Request.new(env)
-    VisualizerMetrics.observe_http(request, 500)
+    duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at
+    VisualizerMetrics.observe_http(request, 500, duration)
     raise
   end
 end

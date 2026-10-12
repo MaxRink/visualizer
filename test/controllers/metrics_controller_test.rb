@@ -5,6 +5,10 @@ class MetricsControllerTest < ActiveSupport::TestCase
     def increment(labels = nil, value = 1)
       observations << [labels, value]
     end
+
+    def observe(value, labels = nil)
+      observations << [labels, value]
+    end
   end
 
   class FakeClient
@@ -14,7 +18,7 @@ class MetricsControllerTest < ActiveSupport::TestCase
       @metrics = {}
     end
 
-    def register(type, name, _help)
+    def register(type, name, _help, **_options)
       @metrics[name] = FakeMetric.new([])
     end
   end
@@ -81,5 +85,21 @@ class MetricsControllerTest < ActiveSupport::TestCase
 
     assert_equal 201, response[0]
     assert_equal ["accepted"], response[2]
+  end
+
+  test "middleware records bounded request duration histogram" do
+    app = ->(_env) { sleep 0.001; [204, {}, []] }
+
+    VisualizerMetricsMiddleware.new(app).call(
+      "REQUEST_METHOD" => "GET",
+      "PATH_INFO" => "/health",
+      "QUERY_STRING" => "",
+      "rack.input" => StringIO.new
+    )
+
+    observations = @client.metrics.fetch("visualizer_http_request_duration_seconds").observations
+    labels, duration = observations.fetch(0)
+    assert_equal({method: "GET", route: "unmatched", status: "204"}, labels)
+    assert_operator duration, :>=, 0
   end
 end
