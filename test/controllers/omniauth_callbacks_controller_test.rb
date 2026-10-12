@@ -45,7 +45,7 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
 
   test "does not create a user without a verified email claim" do
     assert_no_difference ["User.count", "Identity.count", "Session.count"] do
-      get homelab_oidc_callback_url, env: oidc_env("new-subject", "new@example.test")
+      get homelab_oidc_callback_url, env: oidc_env("new-subject", "new@example.test", false)
     end
 
     assert_redirected_to new_session_url
