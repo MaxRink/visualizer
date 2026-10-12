@@ -56,7 +56,6 @@ Rails.application.routes.draw do
   end
 
   get :heartbeat, to: "heartbeat#show"
-  get "/metrics", to: "metrics#show"
   get :privacy, to: "home#privacy"
   post :lemon_squeezy, to: "webhook#lemon_squeezy"
   post :creem, to: "webhook#creem"

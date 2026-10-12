@@ -25,6 +25,8 @@ gem "pg"
 gem "pghero"
 gem "pg_lock"
 gem "postmark-rails"
+gem "prometheus_exporter", "0.4.13"
+gem "webrick", "~> 1.9"
 gem "propshaft"
 gem "inline_svg" # rubocop:disable Bundler/OrderedGems
 gem "puma"

@@ -1,45 +1,66 @@
 require "test_helper"
-require "tmpdir"
 
-class MetricsControllerTest < ActionDispatch::IntegrationTest
+class MetricsControllerTest < ActiveSupport::TestCase
+  FakeMetric = Struct.new(:observations) do
+    def increment(labels = nil, value = 1)
+      observations << [labels, value]
+    end
+  end
+
+  class FakeClient
+    attr_reader :metrics
+
+    def initialize
+      @metrics = {}
+    end
+
+    def register(type, name, _help)
+      @metrics[name] = FakeMetric.new([])
+    end
+  end
+
+  Request = Struct.new(:path_parameters, :request_method)
+
   setup do
-    host! "visualizer.test"
-    @metrics_dir = Dir.mktmpdir("visualizer-metrics")
-    ENV["VISUALIZER_METRICS_DIR"] = @metrics_dir
-    ENV["VISUALIZER_METRICS_PROCESS"] = "test-web"
-    VisualizerMetrics.reset_for_test!
+    @client = FakeClient.new
+    VisualizerMetrics.client = @client
   end
 
   teardown do
-    FileUtils.remove_entry(@metrics_dir)
-    ENV.delete("VISUALIZER_METRICS_DIR")
-    ENV.delete("VISUALIZER_METRICS_PROCESS")
+    VisualizerMetrics.client = nil
   end
 
-  test "exports bounded HTTP metrics without request content" do
-    get "/metrics"
+  test "exports only bounded HTTP labels" do
+    VisualizerMetrics.observe_http(Request.new({controller: "metrics", action: "show"}, "BREW"), 700)
 
-    assert_response :success
-    assert_equal "text/plain; version=0.0.4", response.media_type
-    assert_includes response.body, "visualizer_http_requests_total"
-    assert_not_includes response.body, "query"
-    assert_not_includes response.body, "body"
+    observations = @client.metrics.fetch("visualizer_http_requests_total").observations
+    assert_equal [[{method: "OTHER", route: "metrics#show", status: "OTHER"}, 1]], observations
   end
 
-  test "aggregates queue lifecycle metrics from separate worker files" do
-    ActiveSupport::Notifications.instrument("enqueue.active_job", job: ApplicationJob.new) {}
+  test "exports bounded job labels without job arguments" do
+    event = ActiveSupport::Notifications::Event.new(
+      "enqueue.active_job", 0, 0, "id", job: ApplicationJob.new, arguments: ["private"]
+    )
+    VisualizerMetrics.observe_job(event, "enqueued")
 
-    pid = fork do
-      ENV["VISUALIZER_METRICS_PROCESS"] = "test-worker"
-      VisualizerMetrics.reset_for_test!
-      ActiveSupport::Notifications.instrument("enqueue.active_job", job: ApplicationJob.new) {}
-      exit!
+    observations = @client.metrics.fetch("visualizer_jobs_total").observations
+    assert_equal [[{job: "ApplicationJob", status: "enqueued"}, 1]], observations
+    assert_not_includes observations.flatten, "private"
+  end
+
+  test "collector failure does not fail application work" do
+    failing = Object.new
+    def failing.register(*)
+      raise IOError, "collector unavailable"
     end
-    Process.wait(pid)
+    VisualizerMetrics.client = failing
 
-    get "/metrics"
-
-    assert_includes response.body, 'visualizer_jobs_total{job="ApplicationJob",status="enqueued"} 2'
-    assert_not_includes response.body, "arguments"
+    assert_nothing_raised do
+      VisualizerMetrics.observe_http(Request.new({}, "GET"), 200)
+      VisualizerMetrics.observe_job(
+        ActiveSupport::Notifications::Event.new("enqueue.active_job", 0, 0, "id", job: ApplicationJob.new),
+        "enqueued"
+      )
+    end
   end
 end
