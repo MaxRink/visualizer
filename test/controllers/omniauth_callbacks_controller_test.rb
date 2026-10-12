@@ -32,6 +32,25 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
     assert_equal user.id, Session.order(:created_at).last.user_id
   end
 
+  test "creates a confirmed user for a new verified identity" do
+    assert_difference ["User.count", "Identity.count", "Session.count"], 1 do
+      get homelab_oidc_callback_url, env: oidc_env("new-subject", "new@example.test", true)
+    end
+
+    user = User.find_by!(email: "new@example.test")
+    assert user.confirmed?
+    assert_redirected_to shots_url
+    assert_equal user.id, Session.order(:created_at).last.user_id
+  end
+
+  test "does not create a user without a verified email claim" do
+    assert_no_difference ["User.count", "Identity.count", "Session.count"] do
+      get homelab_oidc_callback_url, env: oidc_env("new-subject", "new@example.test")
+    end
+
+    assert_redirected_to new_session_url
+  end
+
   test "does not link an unrecognised subject by matching email" do
     user = create(:user, email: "owner@example.test")
 
@@ -43,11 +62,11 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
 
   private
 
-  def oidc_env(subject, email = "user@example.test")
+  def oidc_env(subject, email = "user@example.test", email_verified = true)
     {"omniauth.auth" => {
       "provider" => "homelab_oidc",
       "uid" => subject,
-      "info" => {"email" => email},
+      "info" => {"email" => email, "email_verified" => email_verified},
       "extra" => {"raw_info" => {"iss" => @issuer}}
     }}
   end
