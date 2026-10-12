@@ -25,6 +25,10 @@ gem "pg"
 gem "pghero"
 gem "pg_lock"
 gem "postmark-rails"
+# The self-hosted compose stack exposes this process as a dedicated
+# Prometheus target. Keep the exporter in the production image so that the
+# metrics-exporter service is runnable after a clean image build.
+gem "prometheus_exporter", "2.3.1"
 gem "propshaft"
 gem "inline_svg" # rubocop:disable Bundler/OrderedGems
 gem "puma"
