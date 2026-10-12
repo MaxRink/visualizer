@@ -24,6 +24,7 @@ span.add_attributes(
   "email.body" => "secret-body",
   "http.request.body" => "secret-request-body"
 )
+span.instance_variable_get(:@attributes)["messaging.destination"] = :real_time
 span.finish
 attributes = exporter.finished_spans.first.attributes
 
@@ -31,5 +32,6 @@ raise "privacy filter retained sensitive span data" unless (
   attributes.keys & VisualizerPrivacySpanProcessor::SENSITIVE_KEYS
 ).empty?
 raise "safe timing attribute was removed" unless attributes["duration.ms"] == 12
+raise "messaging destination was not normalized" unless attributes["messaging.destination"] == "real_time"
 
 puts "visualizer-otel-privacy: PASS"

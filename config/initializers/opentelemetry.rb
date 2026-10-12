@@ -26,6 +26,9 @@ class VisualizerPrivacySpanProcessor < OpenTelemetry::SDK::Trace::SpanProcessor
     # no public delete operation, so mutate its attribute hash in this hook;
     # the locked SDK version is pinned in Gemfile.lock.
     attributes = span.instance_variable_get(:@attributes)
+    if attributes&.key?("messaging.destination") && attributes["messaging.destination"].is_a?(Symbol)
+      attributes["messaging.destination"] = attributes["messaging.destination"].to_s
+    end
     SENSITIVE_KEYS.each { |key| attributes.delete(key) if attributes&.key?(key) }
   end
 end
