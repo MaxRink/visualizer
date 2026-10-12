@@ -9,7 +9,9 @@ class PrometheusExporterClientTest < ActiveSupport::TestCase
     payload = Queue.new
     reader = Thread.new do
       socket = server.accept
-      socket.gets until (line = socket.gets) == "\r\n" || line.nil?
+      while (line = socket.gets)
+        break if line == "\r\n"
+      end
       body = +""
       loop do
         size_line = socket.gets
@@ -27,11 +29,9 @@ class PrometheusExporterClientTest < ActiveSupport::TestCase
     end
 
     client = PrometheusExporter::Client.new(host: "127.0.0.1", port: server.addr[1])
-    metric = client.register(
-      :histogram,
-      "visualizer_http_request_duration_seconds",
-      "HTTP request duration in seconds."
-    )
+    previous_client = VisualizerMetrics.client
+    VisualizerMetrics.client = client
+    metric = VisualizerMetrics.http_duration_metric
     metric.observe(0.125, method: "GET", route: "rails/health#show", status: "200")
     client.stop(wait_timeout_seconds: 2)
 
@@ -41,6 +41,7 @@ class PrometheusExporterClientTest < ActiveSupport::TestCase
     assert_equal 0.125, observation.fetch("value")
     assert_equal({"method" => "GET", "route" => "rails/health#show", "status" => "200"}, observation.fetch("keys"))
   ensure
+    VisualizerMetrics.client = previous_client if defined?(previous_client)
     reader&.join(2)
     server&.close
   end
