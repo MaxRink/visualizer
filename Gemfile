@@ -86,3 +86,4 @@ gem "opentelemetry-exporter-otlp", "~> 0.37.0"
 # compatible with the isolated exporter runtime and avoids an image-wide
 # exporter upgrade.
 gem "prometheus_exporter", "= 0.4.13"
+gem "webrick", "~> 1.9"
