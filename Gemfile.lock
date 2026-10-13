@@ -453,6 +453,7 @@ GEM
       google-protobuf (>= 4.34.0)
     pghero (4.0.1)
       activerecord (>= 7.2)
+    prometheus_exporter (0.4.13)
     postmark (1.25.1)
       json
     postmark-rails (0.22.1)
@@ -752,6 +753,7 @@ DEPENDENCIES
   pg_lock
   pg_query
   pghero
+  prometheus_exporter (~> 0.4.13)
   postmark-rails
   propshaft
   prosopite

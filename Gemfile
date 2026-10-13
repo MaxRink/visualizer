@@ -80,3 +80,9 @@ gem "opentelemetry-sdk", "~> 1.13"
 gem "opentelemetry-instrumentation-rails", "~> 0.42.0"
 
 gem "opentelemetry-exporter-otlp", "~> 0.37.0"
+
+# Request counters and duration summaries are forwarded to the dedicated
+# exporter service. Keep the older version because its WEBrick listener is
+# compatible with the isolated exporter runtime and avoids an image-wide
+# exporter upgrade.
+gem "prometheus_exporter", "~> 0.4.13"
