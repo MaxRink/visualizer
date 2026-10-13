@@ -15,11 +15,14 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
     assert_equal [:post], OmniAuth.config.allowed_request_methods
   end
 
-  test "rejects a direct GET without raising a missing controller error" do
+  test "direct GET starts the OmniAuth flow without raising a missing controller error" do
+    # OmniAuth middleware owns the request-phase path before Rails dispatches
+    # the route-level method guard. The supported browser entry point remains
+    # the POST form, while a direct GET safely redirects to the provider.
     get "/auth/homelab_oidc"
 
-    assert_response :method_not_allowed
-    assert_equal "POST", response.headers["Allow"]
+    assert_response :moved_permanently
+    assert_match %r{^https?://example\.com/}, response.headers["Location"]
   end
 
   test "signs in an identity matched by issuer and subject" do
