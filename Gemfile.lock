@@ -453,7 +453,6 @@ GEM
       google-protobuf (>= 4.34.0)
     pghero (4.0.1)
       activerecord (>= 7.2)
-    prometheus_exporter (0.4.13)
     postmark (1.25.1)
       json
     postmark-rails (0.22.1)
@@ -463,6 +462,7 @@ GEM
       prettyprint
     prettyprint (0.2.1)
     prism (1.9.0)
+    prometheus_exporter (0.4.13)
     propshaft (1.3.2)
       actionpack (>= 7.0.0)
       activesupport (>= 7.0.0)
@@ -753,8 +753,8 @@ DEPENDENCIES
   pg_lock
   pg_query
   pghero
-  prometheus_exporter (~> 0.4.13)
   postmark-rails
+  prometheus_exporter (= 0.4.13)
   propshaft
   prosopite
   puma

@@ -85,4 +85,4 @@ gem "opentelemetry-exporter-otlp", "~> 0.37.0"
 # exporter service. Keep the older version because its WEBrick listener is
 # compatible with the isolated exporter runtime and avoids an image-wide
 # exporter upgrade.
-gem "prometheus_exporter", "~> 0.4.13"
+gem "prometheus_exporter", "= 0.4.13"

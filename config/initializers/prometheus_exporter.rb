@@ -5,6 +5,7 @@
 # timings, controller/action names and response status; it never sends bodies,
 # query strings or user identifiers.
 unless Rails.env.test?
+  require "prometheus_exporter"
   require "prometheus_exporter/middleware"
   require "prometheus_exporter/client"
 
