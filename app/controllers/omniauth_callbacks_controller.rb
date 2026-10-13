@@ -16,10 +16,16 @@ class OmniauthCallbacksController < ApplicationController
 
   def homelab_oidc
     auth = request.env.fetch("omniauth.auth")
-    issuer = auth.dig("extra", "raw_info", "iss").to_s
+    raw_info = auth.dig("extra", "raw_info") || {}
+    issuer = raw_info["iss"].to_s
     configured_issuer = ENV.fetch("OIDC_ISSUER", "").chomp("/")
     subject = auth.dig("uid").to_s
     return oidc_failure("The identity provider did not return a valid issuer or subject.") if issuer.blank? || subject.blank? || issuer.chomp("/") != configured_issuer
+
+    email = auth.dig("info", "email").to_s.strip.downcase
+    email_verified = auth.dig("info", "email_verified")
+    email_verified = raw_info["email_verified"] if email_verified.nil?
+    return oidc_failure("The identity provider did not return a verified email address.") if email.blank? || !ActiveModel::Type::Boolean.new.cast(email_verified)
 
     identity = Identity.find_by(provider: "homelab_oidc", uid: subject)
     if identity
@@ -30,8 +36,15 @@ class OmniauthCallbacksController < ApplicationController
     elsif Current.user
       Current.user.identities.create!(provider: "homelab_oidc", uid: subject, blob: auth)
       redirect_to shots_path, notice: "OpenID Connect account linked"
-    else
+    elsif User.exists?(email:)
       oidc_failure("Sign in with the local account once before linking OpenID Connect.")
+    else
+      User.transaction do
+        user = User.create!(email:, password: SecureRandom.base58(32), confirmed_at: Time.current)
+        user.identities.create!(provider: "homelab_oidc", uid: subject, blob: auth)
+        start_new_session_for(user)
+      end
+      redirect_to after_authentication_url, notice: "OpenID Connect account created"
     end
   rescue ActiveRecord::RecordNotUnique
     oidc_failure("That OpenID Connect identity is already linked to another account.")
