@@ -10,7 +10,7 @@ Rails.application.config.middleware.use OmniAuth::Builder do
     provider(
       :openid_connect,
       name: :homelab_oidc,
-      scope: %i[openid profile email],
+      scope: %i[openid profile email groups],
       response_type: :code,
       pkce: true,
       issuer: ENV.fetch("OIDC_ISSUER"),
