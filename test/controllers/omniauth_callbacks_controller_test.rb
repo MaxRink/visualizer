@@ -4,11 +4,14 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
   setup do
     @issuer = "https://auth.example.test"
     @previous_issuer = ENV["OIDC_ISSUER"]
+    @previous_admin_group = ENV["OIDC_ADMIN_GROUP"]
     ENV["OIDC_ISSUER"] = @issuer
+    ENV.delete("OIDC_ADMIN_GROUP")
   end
 
   teardown do
     ENV["OIDC_ISSUER"] = @previous_issuer
+    ENV["OIDC_ADMIN_GROUP"] = @previous_admin_group
   end
 
   test "requires POST for the OIDC login request" do
@@ -46,9 +49,39 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
     assert_equal user.id, Session.order(:created_at).last.user_id
   end
 
+  test "maps only the configured OIDC admin group to admin and developer" do
+    ENV["OIDC_ADMIN_GROUP"] = "homelab-admins"
+
+    assert_difference ["User.count", "Identity.count", "Session.count"], 1 do
+      get homelab_oidc_callback_url, env: oidc_env("admin-subject", "admin@example.test", true, ["homelab-admins"])
+    end
+
+    user = User.find_by!(email: "admin@example.test")
+    assert user.admin?
+    assert user.developer?
+  end
+
+  test "does not grant admin when the trusted group is absent" do
+    ENV["OIDC_ADMIN_GROUP"] = "homelab-admins"
+
+    get homelab_oidc_callback_url, env: oidc_env("ordinary-subject", "ordinary@example.test", true, ["users"])
+
+    user = User.find_by!(email: "ordinary@example.test")
+    assert_not user.admin?
+    assert_not user.developer?
+  end
+
   test "does not create a user without a verified email claim" do
     assert_no_difference ["User.count", "Identity.count", "Session.count"] do
       get homelab_oidc_callback_url, env: oidc_env("new-subject", "new@example.test", false)
+    end
+
+    assert_redirected_to new_session_url
+  end
+
+  test "rejects a callback issued by a different provider" do
+    assert_no_difference ["User.count", "Identity.count", "Session.count"] do
+      get homelab_oidc_callback_url, env: oidc_env("wrong-issuer", "new@example.test", true, [], "https://evil.example.test")
     end
 
     assert_redirected_to new_session_url
@@ -86,12 +119,14 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
 
   private
 
-  def oidc_env(subject, email = "user@example.test", email_verified = true, issuer = @issuer)
+  def oidc_env(subject, email = "user@example.test", email_verified = true, groups = nil, issuer = @issuer)
+    raw_info = {"iss" => issuer}
+    raw_info["groups"] = groups if groups
     {"omniauth.auth" => {
       "provider" => "homelab_oidc",
       "uid" => subject,
       "info" => {"email" => email, "email_verified" => email_verified},
-      "extra" => {"raw_info" => {"iss" => issuer}}
+      "extra" => {"raw_info" => raw_info}
     }}
   end
 end
