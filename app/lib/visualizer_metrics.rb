@@ -11,6 +11,10 @@ module VisualizerMetrics
 
   METHODS = %w[GET POST PUT PATCH DELETE HEAD OPTIONS CONNECT TRACE].freeze
 
+  def enabled?
+    ENV["PROMETHEUS_EXPORTER_HOST"].present?
+  end
+
   def http_metric
     @http_metric ||= client.register(
       :counter,
@@ -68,6 +72,14 @@ module VisualizerMetrics
     jobs_metric.increment(job: job, status: status.to_s)
   rescue StandardError => e
     Rails.logger.warn("Prometheus Exporter unavailable for job metric: #{e.class}") if defined?(Rails)
+  end
+
+  def enqueue_status(job)
+    if job.respond_to?(:successfully_enqueued?) && !job.successfully_enqueued?
+      "enqueue_failed"
+    else
+      "enqueued"
+    end
   end
 end
 

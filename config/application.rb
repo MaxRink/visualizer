@@ -34,7 +34,9 @@ module Visualizer
     config.log_tags = %i[request_id remote_ip]
     config.middleware.insert_after ActionDispatch::RemoteIp, CloudflareRemoteIp
     config.middleware.insert_before Rack::MethodOverride, BadRequestMiddleware
-    config.middleware.insert_after ActionDispatch::Executor, VisualizerMetricsMiddleware
+    if VisualizerMetrics.enabled?
+      config.middleware.insert_after ActionDispatch::Executor, VisualizerMetricsMiddleware
+    end
     config.mission_control.jobs.http_basic_auth_enabled = false
 
     initializer "hotcell.variant_transformer", after: "active_storage.configs" do

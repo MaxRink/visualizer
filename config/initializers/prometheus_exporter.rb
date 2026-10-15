@@ -4,9 +4,8 @@
 # is separate from the web process, so the client forwards only aggregate
 # timings, controller/action names and response status; it never sends bodies,
 # query strings or user identifiers.
-unless Rails.env.test?
+if !Rails.env.test? && VisualizerMetrics.enabled?
   require "prometheus_exporter"
-  require "prometheus_exporter/middleware"
   require "prometheus_exporter/client"
 
   PrometheusExporter::Client.default = PrometheusExporter::Client.new(
@@ -14,5 +13,4 @@ unless Rails.env.test?
     port: Integer(ENV.fetch("PROMETHEUS_EXPORTER_PORT", "9394"), 10)
   )
 
-  Rails.application.middleware.unshift PrometheusExporter::Middleware
 end
