@@ -17,7 +17,10 @@ class OidcMiddlewareTest < ActiveSupport::TestCase
         issuer: ISSUER,
         authorization_endpoint: AUTHORIZATION_ENDPOINT,
         token_endpoint: TOKEN_ENDPOINT,
-        jwks_uri: JWKS_URI
+        jwks_uri: JWKS_URI,
+        response_types_supported: ["code"],
+        subject_types_supported: ["public"],
+        id_token_signing_alg_values_supported: ["RS256"]
       }.to_json,
       headers: {"Content-Type" => "application/json"}
     )
