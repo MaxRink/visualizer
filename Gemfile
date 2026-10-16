@@ -83,4 +83,4 @@ gem "opentelemetry-instrumentation-rails", "~> 0.42.0"
 
 gem "opentelemetry-exporter-otlp", "~> 0.37.0"
 
-# Request counters use the pinned declaration above.\n
+# Request counters use the pinned declaration above.
