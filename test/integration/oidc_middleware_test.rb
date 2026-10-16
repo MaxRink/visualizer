@@ -52,7 +52,7 @@ class OidcMiddlewareTest < ActiveSupport::TestCase
 
   def app
     @app ||= Rack::Builder.new do
-      use Rack::Session::Cookie, secret: "oidc-middleware-test-secret-#{'x' * 32}"
+      use Rack::Session::Cookie, secret: "oidc-middleware-test-secret-#{'x' * 40}"
       use OmniAuth::Builder do
         provider(
           :openid_connect,
