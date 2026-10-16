@@ -34,6 +34,11 @@ class OidcMiddlewareTest < ActiveSupport::TestCase
       body: {keys: [@jwk]}.to_json,
       headers: {"Content-Type" => "application/json"}
     )
+    stub_request(:get, "https://issuer.example.test/userinfo").to_return(
+      status: 200,
+      body: {sub: "subject-1", email: "user@example.test", email_verified: true}.to_json,
+      headers: {"Content-Type" => "application/json"}
+    )
   end
 
   test "rejects a replayed state before exchanging the authorization code" do
