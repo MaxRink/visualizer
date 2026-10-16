@@ -4,6 +4,19 @@ require "opentelemetry/sdk"
 require "opentelemetry/instrumentation/rails"
 require "opentelemetry/exporter/otlp"
 
+# OpenTelemetry attributes accept strings and numbers, while ActiveSupport's
+# Action Cable instrumentation can pass a Symbol for messaging.destination.
+# Normalize that scalar at the SDK boundary so the exporter never logs a type
+# error or drops the attribute.
+module VisualizerOpenTelemetryAttributeTypes
+  def set_attribute(key, value)
+    value = value.to_s if value.is_a?(Symbol)
+    super
+  end
+end
+
+OpenTelemetry::SDK::Trace::Span.prepend(VisualizerOpenTelemetryAttributeTypes)
+
 class VisualizerPrivacySpanProcessor < OpenTelemetry::SDK::Trace::SpanProcessor
   SENSITIVE_KEYS = %w[
     url.query

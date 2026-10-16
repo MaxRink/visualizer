@@ -43,7 +43,10 @@ RUN apt-get update -qq && \
 COPY vendor/* ./vendor/
 COPY Gemfile Gemfile.lock ./
 
-RUN bundle install && \
+# Ruby 4's Bundler resolves the platform-specific native gems during image builds.
+# Keep the committed lockfile as the source of versions while allowing that
+# platform resolution in the amd64 image.
+RUN BUNDLE_FROZEN=false bundle install && \
   rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
   bundle exec bootsnap precompile --gemfile
 

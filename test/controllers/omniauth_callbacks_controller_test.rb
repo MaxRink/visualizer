@@ -54,6 +54,27 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_url
   end
 
+  test "rejects a callback issued by a different provider" do
+    assert_no_difference ["User.count", "Identity.count", "Session.count"] do
+      get homelab_oidc_callback_url, env: oidc_env("wrong-issuer", "new@example.test", true, "https://evil.example.test")
+    end
+
+    assert_redirected_to new_session_url
+  end
+
+  test "linking an OIDC identity to the signed-in local admin preserves admin access" do
+    admin = create(:user, :admin)
+    sign_in(admin)
+
+    assert_difference "Identity.count", 1 do
+      get homelab_oidc_callback_url, env: oidc_env("admin-subject", admin.email, true)
+    end
+
+    assert_redirected_to shots_url
+    assert admin.reload.admin?
+    assert_equal admin, Identity.find_by!(provider: "homelab_oidc", uid: "admin-subject").user
+  end
+
   test "does not link an unrecognised subject by matching email" do
     user = create(:user, email: "owner@example.test")
 
@@ -65,12 +86,12 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
 
   private
 
-  def oidc_env(subject, email = "user@example.test", email_verified = true)
+  def oidc_env(subject, email = "user@example.test", email_verified = true, issuer = @issuer)
     {"omniauth.auth" => {
       "provider" => "homelab_oidc",
       "uid" => subject,
       "info" => {"email" => email, "email_verified" => email_verified},
-      "extra" => {"raw_info" => {"iss" => @issuer}}
+      "extra" => {"raw_info" => {"iss" => issuer}}
     }}
   end
 end
