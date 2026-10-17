@@ -31,17 +31,20 @@ class OmniauthCallbacksController < ApplicationController
     if identity
       return oidc_failure("That OpenID Connect identity belongs to another account.") if Current.user && identity.user_id != Current.user.id
 
+      apply_oidc_admin_role(identity.user, identity, raw_info)
       start_new_session_for(identity.user)
       redirect_to after_authentication_url
     elsif Current.user
-      Current.user.identities.create!(provider: "homelab_oidc", uid: subject, blob: auth)
+      identity = Current.user.identities.create!(provider: "homelab_oidc", uid: subject, blob: auth)
+      apply_oidc_admin_role(Current.user, identity, raw_info)
       redirect_to shots_path, notice: "OpenID Connect account linked"
     elsif User.exists?(email:)
       oidc_failure("Sign in with the local account once before linking OpenID Connect.")
     else
       User.transaction do
         user = User.create!(email:, password: SecureRandom.base58(32), confirmed_at: Time.current)
-        user.identities.create!(provider: "homelab_oidc", uid: subject, blob: auth)
+        identity = user.identities.create!(provider: "homelab_oidc", uid: subject, blob: auth)
+        apply_oidc_admin_role(user, identity, raw_info)
         start_new_session_for(user)
       end
       redirect_to after_authentication_url, notice: "OpenID Connect account created"
@@ -59,5 +62,33 @@ class OmniauthCallbacksController < ApplicationController
 
   def oidc_failure(message)
     redirect_to new_session_url, alert: message
+  end
+
+  def oidc_admin_group(raw_info)
+    trusted_group = ENV["OIDC_ADMIN_GROUP"].to_s.strip
+    return if trusted_group.blank?
+
+    groups = raw_info["groups"] || raw_info[:groups]
+    groups = groups.split if groups.is_a?(String)
+    trusted_group if Array(groups).map(&:to_s).include?(trusted_group)
+  end
+
+  def apply_oidc_admin_role(user, identity, raw_info)
+    trusted_group = oidc_admin_group(raw_info)
+    if trusted_group
+      unless identity.oidc_role_managed?
+        identity.update!(
+          oidc_role_managed: true,
+          oidc_role_group: trusted_group,
+          oidc_previous_admin: user.admin?,
+          oidc_previous_developer: user.developer?
+        )
+      end
+
+      user.update!(admin: true, developer: true)
+    elsif identity.oidc_role_managed? && identity.oidc_role_group == ENV["OIDC_ADMIN_GROUP"].to_s.strip
+      user.update!(admin: identity.oidc_previous_admin?, developer: identity.oidc_previous_developer?)
+      identity.update!(oidc_role_managed: false, oidc_role_group: nil)
+    end
   end
 end

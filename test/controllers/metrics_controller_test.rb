@@ -24,6 +24,7 @@ class MetricsControllerTest < ActiveSupport::TestCase
   end
 
   Request = Struct.new(:path_parameters, :request_method)
+  EnqueueResult = Struct.new(:successfully_enqueued?)
 
   setup do
     @client = FakeClient.new
@@ -85,6 +86,21 @@ class MetricsControllerTest < ActiveSupport::TestCase
 
     assert_equal 201, response[0]
     assert_equal ["accepted"], response[2]
+  end
+
+  test "metrics require an explicit exporter host" do
+    previous_host = ENV["PROMETHEUS_EXPORTER_HOST"]
+    ENV.delete("PROMETHEUS_EXPORTER_HOST")
+
+    refute VisualizerMetrics.enabled?
+  ensure
+    ENV["PROMETHEUS_EXPORTER_HOST"] = previous_host
+  end
+
+  test "enqueue status records failed enqueue attempts" do
+    assert_equal "enqueued", VisualizerMetrics.enqueue_status(EnqueueResult.new(true))
+    assert_equal "enqueue_failed", VisualizerMetrics.enqueue_status(EnqueueResult.new(false))
+    assert_equal "enqueued", VisualizerMetrics.enqueue_status(Object.new)
   end
 
   test "middleware records bounded request duration histogram" do
