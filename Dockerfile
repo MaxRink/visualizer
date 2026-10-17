@@ -5,8 +5,8 @@
 ARG RUBY_VERSION
 FROM docker.io/library/ruby:${RUBY_VERSION:+${RUBY_VERSION}-}slim AS base
 
-LABEL org.opencontainers.image.source=https://github.com/miharekar/visualizer
-LABEL org.opencontainers.image.licenses=MIT
+LABEL org.opencontainers.image.source=https://github.com/MaxRink/visualizer \
+  org.opencontainers.image.licenses=MIT
 
 # Rails app lives here
 WORKDIR /rails
@@ -66,6 +66,11 @@ RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
 
 # Final stage for app image
 FROM base
+
+ARG COMMIT=dev
+ARG BUILD_TIME=dev
+LABEL org.opencontainers.image.revision=${COMMIT} \
+  org.opencontainers.image.created=${BUILD_TIME}
 
 # Run and own only the runtime files as a non-root user for security
 RUN groupadd --system --gid 1000 rails && \

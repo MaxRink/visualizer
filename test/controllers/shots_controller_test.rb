@@ -23,7 +23,7 @@ class ShotsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "index renders Turbo Stream pagination" do
-    get shots_url(format: :turbo_stream, before: 1.day.from_now.iso8601)
+    get shots_url(format: :turbo_stream, before: Paginatable.encrypt_time(1.day.from_now), before_id: SecureRandom.uuid)
 
     assert_response :success
     assert_equal "text/vnd.turbo-stream.html", response.media_type
@@ -78,6 +78,35 @@ class ShotsControllerTest < ActionDispatch::IntegrationTest
     assert_select "#shot-chart", count: 0
     assert_select "#compare-range", count: 0
     assert_includes response.body, "Comparison"
+  end
+
+  test "compare select lists the viewer's shots, not the owner's" do
+    owner = create(:user)
+    owner_shot = create(:shot, user: owner)
+    other_owner_shot = create(:shot, user: owner)
+
+    get shot_url(owner_shot)
+
+    assert_response :success
+    assert_select "select[data-action='related-shots#compare'] option[value='#{@shot.id}']"
+    assert_select "option[value='#{other_owner_shot.id}']", count: 0
+  end
+
+  test "related shots hide times from other viewers of users who hide them" do
+    owner = create(:user, :public, hide_shot_times: true)
+    owner_shot = create(:shot, user: owner, public: true, profile_title: "Owner shot")
+    create(:shot, user: owner, public: true, profile_title: "Earlier shot", start_time: Time.utc(2020, 1, 2, 3, 4))
+
+    get shot_url(owner_shot)
+
+    assert_response :success
+    assert_select "select[data-action='related-shots#goTo'] option", text: "Earlier shot"
+    assert_no_match(/2020/, css_select("select[data-action='related-shots#goTo']").to_s)
+
+    sign_in(owner)
+    get shot_url(owner_shot)
+
+    assert_select "select[data-action='related-shots#goTo'] option", text: /Earlier shot @ .*2020/
   end
 
   test "new renders the shared manual form" do
@@ -226,6 +255,17 @@ class ShotsControllerTest < ActionDispatch::IntegrationTest
 
     post shots_url, params: {files: [fixture_file_upload(Rails.root.join("test/files/invalid_file.something"), "text/plain")], drag: true}
     assert_response :unprocessable_content
+  end
+
+  test "uploads over the size limit report the limit" do
+    content = File.read("test/files/20210921T085910.shot") + (" " * Parsers::Base::MAX_FILE_SIZE)
+
+    assert_no_difference "Shot.count" do
+      post shots_url, params: {files: [Rack::Test::UploadedFile.new(StringIO.new(content), "text/plain", original_filename: "shot.shot")]}
+    end
+
+    assert_redirected_to shots_url(format: :html)
+    assert_includes flash[:alert].to_json, "The limit is 10 MB"
   end
 
   test "free users can search shots and filter by date and enjoyment" do

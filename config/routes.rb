@@ -70,7 +70,6 @@ Rails.application.routes.draw do
   end
 
   resources :shots do
-    resource :grind_suggestion, only: :create, module: :shots
     member do
       delete :remove_image
       get :share
@@ -83,7 +82,6 @@ Rails.application.routes.draw do
   end
 
   resources :coffee_bags, except: [:show] do
-    resource :grind_suggestion, only: :create, module: :coffee_bags
     member do
       delete :remove_image
       post :archive

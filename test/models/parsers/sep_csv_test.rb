@@ -2,6 +2,8 @@ require "test_helper"
 
 module Parsers
   class SepCsvTest < ActiveSupport::TestCase
+    CSV_HEADER = "information_type,elapsed,pressure,current_total_shot_weight,flow_in,flow_out,water_temperature_boiler,water_temperature_in,water_temperature_basket,metatype,metadata,comment"
+
     setup do
       @user = build_stubbed(:user)
     end
@@ -28,6 +30,13 @@ module Parsers
       assert_equal "3 clicks", shot.grinder_setting
       assert_equal "15.2", shot.bean_weight
       assert_equal "31.01", shot.drink_weight
+    end
+
+    test "rejects timestamps that would expand into too many datapoints" do
+      file = File.read("test/files/sharebrew_tsp.csv") + "moment,1e400,1.0,,,,,,,,,sample: pressure\n"
+      Timeout.timeout(5) do
+        assert_raises(Parsers::Base::InvalidFile) { Shot.from_file(@user, file) }
+      end
     end
 
     test "treats descriptions as plain text" do
@@ -110,6 +119,14 @@ module Parsers
       assert_equal "36.07", shot.drink_weight
       assert_equal "Parsers::SepCsv", shot.information.brewdata["parser"]
       assert_equal File.read("test/files/pressensor_short_profile.csv"), shot.information.csv_profile
+    end
+
+    test "returns an invalid shot for a header-only file" do
+      assert_not Shot.from_file(@user, "#{CSV_HEADER}\n").valid?
+    end
+
+    test "returns an invalid shot for a file with only meta rows" do
+      assert_not Shot.from_file(@user, "#{CSV_HEADER}\nmeta,,,,,,,,,Name,My espresso,text\n").valid?
     end
   end
 end

@@ -2,15 +2,16 @@ module Api
   class ShotsController < Api::BaseController
     include Shots::Editing
 
+    before_action :ignore_token_without_read_scope, except: %i[upload update destroy]
     before_action :verify_upload_access, only: %i[upload]
     before_action :verify_write_access, only: %i[destroy update]
     before_action :extract_file_content, only: %i[upload]
     before_action :load_users_shot, only: %i[update destroy]
 
     def index
-      shots = shots_for_index.select(:id, :start_time, :user_id, :updated_at)
+      shots = shots_for_index.select(:id, :start_time, :user_id, :updated_at).includes(:user)
       shots, paging = paginate(shots, with_counts: Current.user.present?)
-      data = shots.map { {clock: it.start_time.to_i, id: it.id, updated_at: it.updated_at.to_i} }
+      data = shots.map { shot_summary(it) }
       render json: {data:, paging:, user_id: Current.user&.id}
     rescue ArgumentError, RangeError
       render json: {error: "updated_after must be a Unix timestamp in seconds"}, status: :unprocessable_content
@@ -62,6 +63,8 @@ module Api
       else
         render json: {error: "Could not save the provided file. #{shot.errors.full_messages.join(", ")}"}, status: :unprocessable_content
       end
+    rescue Parsers::Base::InvalidFile => e
+      render json: {error: "Could not save the provided file. #{e.message}"}, status: :unprocessable_content
     end
 
     def update
@@ -88,6 +91,14 @@ module Api
 
     private
 
+    def shot_summary(shot)
+      if Current.user.nil? && shot.user&.hide_shot_times
+        {id: shot.id}
+      else
+        {clock: shot.start_time.to_i, id: shot.id, updated_at: shot.updated_at.to_i}
+      end
+    end
+
     def shots_for_index
       shots = Current.user.present? ? Current.user.shots : Shot.visible
       shots = shots.where("updated_at > ?", updated_after) if Current.user.present? && params[:updated_after].present?
@@ -100,6 +111,10 @@ module Api
       raise ArgumentError unless params[:updated_after].match?(/\A\d+\z/)
 
       Time.zone.at(Integer(params[:updated_after]))
+    end
+
+    def ignore_token_without_read_scope
+      Current.session = nil if doorkeeper_token && !doorkeeper_token.includes_scope?("read")
     end
 
     def load_users_shot
