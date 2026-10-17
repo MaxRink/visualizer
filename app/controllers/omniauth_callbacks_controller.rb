@@ -1,4 +1,7 @@
 class OmniauthCallbacksController < ApplicationController
+  # Airtable is an authenticated premium integration; OIDC must remain public
+  # for first-time sign-in and account linking.
+  before_action :require_authentication, :check_premium!, only: :airtable
   skip_before_action :reject_unconfirmed_user, only: :homelab_oidc
 
   def airtable

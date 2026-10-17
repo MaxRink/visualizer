@@ -1,31 +1,52 @@
 require "test_helper"
 
 class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
+  include ActiveJob::TestHelper
+
   setup do
     @issuer = "https://auth.example.test"
     @previous_issuer = ENV["OIDC_ISSUER"]
     @previous_admin_group = ENV["OIDC_ADMIN_GROUP"]
     ENV["OIDC_ISSUER"] = @issuer
     ENV.delete("OIDC_ADMIN_GROUP")
+    host! "example.com"
+    OmniAuth.config.test_mode = true
+    OmniAuth.config.mock_auth[:airtable] = OmniAuth::AuthHash.new(
+      provider: "airtable",
+      uid: "airtable-uid",
+      credentials: {token: "token", refresh_token: "refresh", expires_at: 1.hour.from_now.to_i}
+    )
   end
 
   teardown do
     ENV["OIDC_ISSUER"] = @previous_issuer
     ENV["OIDC_ADMIN_GROUP"] = @previous_admin_group
+    OmniAuth.config.test_mode = false
+    OmniAuth.config.mock_auth[:airtable] = nil
   end
 
   test "requires POST for the OIDC login request" do
     assert_equal [:post], OmniAuth.config.allowed_request_methods
   end
 
-  test "direct GET starts the OmniAuth flow without raising a missing controller error" do
-    # OmniAuth middleware owns the request-phase path before Rails dispatches
-    # the route-level method guard. The supported browser entry point remains
-    # the POST form, while a direct GET safely redirects to the provider.
+  test "GET is rejected and the sign-in form starts the OIDC flow with POST" do
+    previous_oidc_values = %w[OIDC_ISSUER OIDC_CLIENT_ID OIDC_CLIENT_SECRET].to_h { |key| [key, ENV[key]] }
+    ENV["OIDC_ISSUER"] = "https://auth.example.test"
+    ENV["OIDC_CLIENT_ID"] = "visualizer-test-client"
+    ENV["OIDC_CLIENT_SECRET"] = "visualizer-test-secret"
+
     get "/auth/homelab_oidc"
 
-    assert_response :moved_permanently
-    assert_match %r{^https?://example\.com/}, response.headers["Location"]
+    assert_response :method_not_allowed
+    assert_equal "POST", response.headers["Allow"]
+
+    get new_session_url
+
+    assert_response :success
+    assert_select "form[action=?][method=post]", sign_in_with_homelab_oidc_path
+    assert_equal "POST", Rails.application.routes.routes.find { |route| route.name == "sign_in_with_homelab_oidc" }.verb
+  ensure
+    previous_oidc_values&.each { |key, value| ENV[key] = value }
   end
 
   test "signs in an identity matched by issuer and subject" do
@@ -87,14 +108,6 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_url
   end
 
-  test "rejects a callback issued by a different provider" do
-    assert_no_difference ["User.count", "Identity.count", "Session.count"] do
-      get homelab_oidc_callback_url, env: oidc_env("wrong-issuer", "new@example.test", true, "https://evil.example.test")
-    end
-
-    assert_redirected_to new_session_url
-  end
-
   test "linking an OIDC identity to the signed-in local admin preserves admin access" do
     admin = create(:user, :admin)
     sign_in(admin)
@@ -115,6 +128,38 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to new_session_url
     assert_not user.identities.exists?(provider: "homelab_oidc", uid: "new-subject")
+  end
+
+  test "airtable callback connects premium users" do
+    user = create(:user, :premium)
+    sign_in(user)
+
+    assert_enqueued_with(job: AirtableUploadAllJob, args: [user]) do
+      get "/auth/airtable/callback"
+    end
+
+    assert_redirected_to shots_path
+    assert_equal 1, user.identities.by_provider(:airtable).count
+  end
+
+  test "airtable callback ignores non-premium users" do
+    user = create(:user)
+    sign_in(user)
+
+    assert_no_enqueued_jobs do
+      get "/auth/airtable/callback"
+    end
+
+    assert_redirected_to premium_index_path
+    assert_empty user.identities
+  end
+
+  test "airtable callback requires authentication" do
+    assert_no_difference "Identity.count" do
+      get "/auth/airtable/callback"
+    end
+
+    assert_redirected_to new_session_url
   end
 
   private

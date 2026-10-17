@@ -251,6 +251,78 @@ module Api
       assert_not_includes json_response.keys, "private_notes"
     end
 
+    test "show does not expose private notes of an orphaned shot to anonymous callers" do
+      deleted_user = create(:user)
+      shot = FactoryBot.create(:shot, user: deleted_user, private_notes: "Only for me")
+      deleted_user.destroy!
+
+      get api_shot_url(shot), as: :json
+      assert_response :success
+
+      assert_not_includes response.parsed_body.keys, "private_notes"
+    end
+
+    test "anonymous index omits times of shots from users who hide them" do
+      hidden_user = FactoryBot.create(:user, :public, hide_shot_times: true)
+      hidden_shot = FactoryBot.create(:shot, user: hidden_user, public: true)
+      shown_shot = FactoryBot.create(:shot, user: public_user, public: true)
+
+      get api_shots_url, as: :json
+      assert_response :success
+
+      data = response.parsed_body["data"].index_by { it["id"] }
+      assert_equal ["id"], data[hidden_shot.id].keys
+      assert_equal %w[clock id updated_at], data[shown_shot.id].keys.sort
+    end
+
+    test "show hides times from other viewers of users who hide them" do
+      hidden_user = FactoryBot.create(:user, :public, hide_shot_times: true)
+      shot = Shot.from_file(hidden_user, Rails.root.join("test/files/beanconqueror.json").read)
+      shot.public = true
+      shot.save!
+
+      get api_shot_url(shot), as: :json
+      assert_response :success
+
+      json_response = response.parsed_body
+      assert_not_includes json_response.keys, "updated_at"
+      assert_not_includes json_response.to_json, "unix_timestamp"
+      assert_equal "00:00:00.000", json_response["brewdata"]["brewFlow"]["weight"].first["timestamp"]
+      assert_equal "00:00:00.107", json_response["brewdata"]["brewFlow"]["weight"].second["timestamp"]
+      assert_equal "00:00:00.001", json_response["brewdata"]["brewFlow"]["realtimeFlow"].first["timestamp"]
+      assert_includes shot.reload.information.brewdata.to_json, "unix_timestamp"
+      assert_equal "17:18:21.961", shot.information.brewdata["brewFlow"]["weight"].first["timestamp"]
+
+      get api_shot_url(shot), headers: auth_headers(hidden_user), as: :json
+      assert_response :success
+      assert_includes response.parsed_body.keys, "updated_at"
+      assert_includes response.parsed_body.to_json, "unix_timestamp"
+      assert_equal "17:18:21.961", response.parsed_body["brewdata"]["brewFlow"]["weight"].first["timestamp"]
+    end
+
+    test "show drops unparseable brewflow timestamps and exported time keys for other viewers" do
+      hidden_user = FactoryBot.create(:user, :public, hide_shot_times: true)
+      json = JSON.parse(Rails.root.join("test/files/beanconqueror.json").read)
+      json["brewFlow"]["weight"][1]["timestamp"] = "bad"
+      json["brewFlow"]["weight"][2]["timestamp"] = "10:00:00"
+      json["meta"] = {"visualizer" => {"shot_id" => "abc", "updated_at" => 1_773_043_980, "start_time" => "2026-03-09T08:12:00.000Z"}}
+      shot = Shot.from_file(hidden_user, json.to_json)
+      shot.public = true
+      shot.save!
+
+      get api_shot_url(shot), as: :json
+      assert_response :success
+
+      brewdata = response.parsed_body["brewdata"]
+      weight = brewdata["brewFlow"]["weight"]
+      assert_equal "00:00:00.000", weight.first["timestamp"]
+      assert_not_includes weight.second.keys, "timestamp"
+      assert_not_includes weight.third.keys, "timestamp"
+      assert_equal "abc", brewdata["meta"]["visualizer"]["shot_id"]
+      assert_not_includes brewdata.to_json, "updated_at"
+      assert_not_includes brewdata.to_json, "start_time"
+    end
+
     test "show returns 404 for non-existent shot" do
       get api_shot_url(id: "nonexistent"), as: :json
       assert_response :not_found
@@ -381,6 +453,38 @@ module Api
       json_response = response.parsed_body
       assert json_response["error"].present?
       assert_includes json_response["error"], "Could not save the provided file"
+    end
+
+    test "upload returns 422 for invalid JSON files" do
+      post upload_api_shots_url, headers: auth_headers(user), params: {file: Rack::Test::UploadedFile.new(StringIO.new("{ invalid json"), "application/json", original_filename: "shot.json")}
+
+      assert_response :unprocessable_content
+      assert_equal "Could not save the provided file. Could not parse the file.", response.parsed_body["error"]
+    end
+
+    test "upload returns 422 for files that cannot be parsed" do
+      post upload_api_shots_url, headers: auth_headers(user), params: {file: Rack::Test::UploadedFile.new(StringIO.new("clock 1\nsettings {\n"), "text/plain", original_filename: "shot.shot")}
+
+      assert_response :unprocessable_content
+      assert_equal "Could not save the provided file. Could not parse the file.", response.parsed_body["error"]
+    end
+
+    test "upload returns 422 for files with too many datapoints" do
+      content = Rails.root.join("test/files/sharebrew_tsp.csv").read + "moment,1e400,1.0,,,,,,,,,sample: pressure\n"
+
+      post upload_api_shots_url, headers: auth_headers(user), params: {file: Rack::Test::UploadedFile.new(StringIO.new(content), "text/csv", original_filename: "shot.csv")}
+
+      assert_response :unprocessable_content
+      assert_equal "Could not save the provided file. Too many datapoints", response.parsed_body["error"]
+    end
+
+    test "upload returns 422 for files over the size limit" do
+      content = Rails.root.join("test/files/20210921T085910.shot").read + (" " * Parsers::Base::MAX_FILE_SIZE)
+
+      post upload_api_shots_url, headers: auth_headers(user), params: {file: Rack::Test::UploadedFile.new(StringIO.new(content), "text/plain", original_filename: "shot.shot")}
+
+      assert_response :unprocessable_content
+      assert_includes response.parsed_body["error"], "The limit is 10 MB"
     end
 
     test "update returns updated shot for JSON request" do
@@ -565,6 +669,46 @@ module Api
       assert_not_includes response.headers["Set-Cookie"].to_s, "session_id="
     end
 
+    test "stored token hashes are not accepted as bearer tokens" do
+      token = create_access_token_for(user)
+
+      get api_me_url, headers: bearer_headers(token), as: :json
+      assert_response :success
+
+      get api_me_url, headers: {"Authorization" => "Bearer #{token.token}"}, as: :json
+      assert_response :unauthorized
+    end
+
+    test "access tokens are only accepted in the authorization header" do
+      token = create_access_token_for(user)
+
+      get api_me_url(access_token: token.plaintext_token), as: :json
+      assert_response :unauthorized
+
+      get api_me_url, params: {bearer_token: token.plaintext_token}, as: :json
+      assert_response :unauthorized
+
+      get api_me_url, headers: bearer_headers(token), as: :json
+      assert_response :success
+    end
+
+    test "tokens without read scope only see what anonymous requests see" do
+      token = create_access_token_for(user, scopes: "upload write")
+      shot = FactoryBot.create(:shot, user:, private_notes: "Only for me")
+      public_shot = FactoryBot.create(:shot, user: public_user, public: true)
+
+      get api_shots_url, headers: bearer_headers(token), as: :json
+      assert_response :success
+      assert_equal [public_shot.id], response.parsed_body["data"].pluck("id")
+
+      get api_shot_url(shot), headers: bearer_headers(token), as: :json
+      assert_response :success
+      assert_not_includes response.parsed_body.keys, "private_notes"
+
+      get shared_api_shots_url, headers: bearer_headers(token), as: :json
+      assert_response :not_found
+    end
+
     private
 
     def auth_headers(user)
@@ -572,12 +716,12 @@ module Api
     end
 
     def bearer_headers(token)
-      {"Authorization" => "Bearer #{token.token}"}
+      {"Authorization" => "Bearer #{token.plaintext_token}"}
     end
 
-    def create_access_token_for(user)
+    def create_access_token_for(user, scopes: "read write upload")
       application = Doorkeeper::Application.create!(name: "Test App", owner: user, redirect_uri: "urn:ietf:wg:oauth:2.0:oob")
-      Doorkeeper::AccessToken.create!(application:, resource_owner_id: user.id, scopes: "read write upload", expires_in: 1.week)
+      Doorkeeper::AccessToken.create!(application:, resource_owner_id: user.id, scopes:, expires_in: 1.week)
     end
   end
 end

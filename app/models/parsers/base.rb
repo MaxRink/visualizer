@@ -6,11 +6,16 @@ module Parsers
     PROFILE_FIELDS = %w[advanced_shot author beverage_type espresso_decline_time espresso_hold_time espresso_pressure espresso_temperature espresso_temperature_0 espresso_temperature_1 espresso_temperature_2 espresso_temperature_3 espresso_temperature_steps_enabled final_desired_shot_volume final_desired_shot_volume_advanced final_desired_shot_volume_advanced_count_start final_desired_shot_weight final_desired_shot_weight_advanced flow_profile_decline flow_profile_decline_time flow_profile_hold flow_profile_hold_time flow_profile_minimum_pressure flow_profile_preinfusion flow_profile_preinfusion_time maximum_flow maximum_flow_range maximum_flow_range_advanced maximum_flow_range_default maximum_pressure maximum_pressure_range maximum_pressure_range_advanced maximum_pressure_range_default original_profile_title preinfusion_flow_rate preinfusion_guarantee preinfusion_stop_pressure preinfusion_time pressure_end profile_filename profile_language profile_notes profile_title profile_to_save settings_profile_type tank_desired_water_temperature].freeze
     EXTRA_DATA_METHODS = %w[drink_weight grinder_model grinder_setting bean_brand bean_type roast_level roast_date drink_tds drink_ey espresso_enjoyment espresso_notes bean_notes].freeze
     EXTRA_DATA_CAPTURE = (EXTRA_DATA_METHODS + %w[bean_weight DSx_bean_weight grinder_dose_weight enable_fahrenheit my_name skin sn]).freeze
+    MAX_FILE_SIZE = 10.megabytes
+
+    class InvalidFile < StandardError; end
 
     attr_reader :file, :json, :start_time, :data, :extra, :brewdata, :timeframe, :profile_title, :profile_fields
 
     def self.parser_for(file)
-      if file.start_with?("{")
+      if file.bytesize > MAX_FILE_SIZE
+        raise InvalidFile, "File is too large. The limit is #{ActiveSupport::NumberHelper.number_to_human_size(MAX_FILE_SIZE)}."
+      elsif file.start_with?("{")
         json = parse_json(file)
         if json.key?("mill") || json.key?("brewFlow")
           Beanconqueror.new(file, json)
@@ -35,9 +40,9 @@ module Parsers
     def self.parse_json(file, retrying: false)
       JSON.parse(file)
     rescue JSON::ParserError
-      raise if retrying
+      raise InvalidFile, "Could not parse the file." if retrying
 
-      file = file.force_encoding("UTF-8").gsub(/[\u0000-\u001F\u007F-\u009F]/, "")
+      file = file.force_encoding("UTF-8").scrub.gsub(/[\u0000-\u001F\u007F-\u009F]/, "")
       retrying = true
       retry
     end
@@ -52,7 +57,7 @@ module Parsers
     end
 
     def build_shot(user)
-      parse
+      parse_or_reject
 
       shot = existing_shot(user) || Shot.find_or_initialize_by(user:, sha:)
       shot.start_time = start_time
@@ -74,11 +79,20 @@ module Parsers
 
     def parse
       nil
-    rescue SystemStackError, StandardError => e
-      Rails.env.development? ? raise(e) : new(file)
     end
 
     private
+
+    def parse_or_reject
+      parse
+    rescue InvalidFile
+      raise
+    rescue SystemStackError, StandardError => e
+      raise if Rails.env.development?
+
+      Appsignal.report_error(e)
+      raise InvalidFile, "Could not parse the file."
+    end
 
     memo_wise def sha
       Digest::SHA256.base64digest(data.sort.to_json) if timeframe.present? && data.values.any?(&:present?)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_17_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "dblink"
   enable_extension "pg_catalog.plpgsql"
@@ -156,6 +156,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_120000) do
     t.uuid "user_id", null: false
     t.jsonb "blob"
     t.datetime "expires_at"
+    t.boolean "oidc_role_managed", default: false, null: false
+    t.string "oidc_role_group"
+    t.boolean "oidc_previous_admin"
+    t.boolean "oidc_previous_developer"
     t.string "provider", null: false
     t.string "uid", null: false
     t.string "token"

@@ -1,9 +1,3 @@
-GIT
-  remote: https://github.com/miharekar/tickly.git
-  revision: a4eaa0462acb6433d63eb64d8414beab91023054
-  specs:
-    tickly (2.1.7)
-
 GEM
   remote: https://rubygems.org/
   specs:
@@ -179,13 +173,13 @@ GEM
     factory_bot_rails (6.5.1)
       factory_bot (~> 6.5)
       railties (>= 6.1.0)
-    faraday (2.14.4)
-      faraday-net_http (>= 2.0, < 3.5)
+    faraday (2.15.0)
+      faraday-net_http (>= 2.0, < 3.6)
       json
       logger
     faraday-follow_redirects (0.5.0)
       faraday (>= 1, < 3)
-    faraday-net_http (3.4.4)
+    faraday-net_http (3.5.0)
       net-http (~> 0.5)
     ffi (1.17.4-aarch64-linux-gnu)
     ffi (1.17.4-arm64-darwin)
@@ -237,6 +231,7 @@ GEM
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
     jmespath (1.6.2)
+    json (3.1.0)
     json-jwt (1.17.2)
       activesupport (>= 4.2)
       aes_key_wrap
@@ -244,7 +239,6 @@ GEM
       bindata
       faraday (~> 2.0)
       faraday-follow_redirects
-    json (3.1.0)
     jwt (3.3.0)
       base64
     kamal (2.12.0)
@@ -384,7 +378,7 @@ GEM
       opentelemetry-exporter-otlp-common (~> 0.2)
       opentelemetry-sdk (~> 1.10)
       opentelemetry-semantic_conventions
-    opentelemetry-exporter-otlp-common (0.3.0)
+    opentelemetry-exporter-otlp-common (0.4.0)
       google-protobuf (>= 3.18)
       googleapis-common-protos-types (~> 1.3)
       opentelemetry-api (~> 1.1)
@@ -422,9 +416,9 @@ GEM
       opentelemetry-instrumentation-active_storage (~> 0.4)
       opentelemetry-instrumentation-active_support (~> 0.11)
       opentelemetry-instrumentation-concurrent_ruby (~> 0.25)
-    opentelemetry-logs-api (0.6.0)
+    opentelemetry-logs-api (0.7.0)
       opentelemetry-api (~> 1.0)
-    opentelemetry-metrics-api (0.9.0)
+    opentelemetry-metrics-api (0.10.0)
       opentelemetry-api (~> 1.0)
     opentelemetry-registry (0.6.3)
       opentelemetry-api (~> 1.1)
@@ -772,7 +766,6 @@ DEPENDENCIES
   stimulus-rails
   tailwindcss-rails
   thruster
-  tickly!
   turbo-rails
   vernier
   web-console
@@ -782,4 +775,4 @@ DEPENDENCIES
   webrick (~> 1.9)
 
 BUNDLED WITH
-  4.0.23
+  4.0.20

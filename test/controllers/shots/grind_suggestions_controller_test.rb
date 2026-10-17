@@ -8,8 +8,7 @@ class Shots::GrindSuggestionsControllerTest < ActionDispatch::IntegrationTest
 
   test "suggests grind and replaces the link" do
     probabilities = (0..6).to_h { [it.to_s, it == 1 ? 1.0 : 0.0] }
-    result = {model: "clef", answers: {adjustment: {type: "score", probabilities:}, puck_issue: {type: "noul", noul: 0.1}}}
-    stub_request(:post, SystemOne::API_ENDPOINT).to_return(status: 200, body: {result:, success: true}.to_json)
+    stub_system_one(adjustment: {type: "score", probabilities:}, puck_issue: {type: "noul", noul: 0.1})
     sign_in @admin
 
     post shot_grind_suggestion_path(@shot), as: :turbo_stream
