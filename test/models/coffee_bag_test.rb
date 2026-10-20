@@ -159,4 +159,31 @@ class CoffeeBagTest < ActiveSupport::TestCase
       coffee_bag.update!(name: "Updated")
     end
   end
+
+  test "refresh_shot_values updates every shot even when one is invalid" do
+    coffee_bag = create(:coffee_bag, roaster:)
+    invalid_shot = create(:shot, user:, coffee_bag:)
+    valid_shot = create(:shot, user:, coffee_bag:)
+    invalid_shot.fragrance = 99
+    invalid_shot.save!(validate: false)
+    coffee_bag.update!(name: "Renamed")
+
+    coffee_bag.refresh_shot_values
+
+    assert_equal "Renamed", invalid_shot.reload.bean_type
+    assert_equal "Renamed", valid_shot.reload.bean_type
+  end
+
+  test "linking and unlinking a canonical coffee bag refreshes the shots' canonical coffee bag" do
+    canonical_bag = CanonicalCoffeeBag.create!(name: "Ethiopia Aricha", canonical_roaster: CanonicalRoaster.create!(name: "Square Mile"))
+    coffee_bag = create(:coffee_bag, roaster:)
+    shot = create(:shot, user:, coffee_bag:)
+    coffee_bag = CoffeeBag.find(coffee_bag.id)
+
+    perform_enqueued_jobs { coffee_bag.update!(canonical_coffee_bag: canonical_bag) }
+    assert_equal canonical_bag.id, shot.reload.canonical_coffee_bag_id
+
+    perform_enqueued_jobs { coffee_bag.update!(canonical_coffee_bag: nil) }
+    assert_nil shot.reload.canonical_coffee_bag_id
+  end
 end
