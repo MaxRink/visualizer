@@ -92,7 +92,7 @@ class OmniauthCallbacksController < ApplicationController
       end
 
       user.update!(admin: true, developer: true)
-    elsif identity.oidc_role_managed? && identity.oidc_role_group == ENV["OIDC_ADMIN_GROUP"].to_s.strip
+    elsif identity.oidc_role_managed?
       user.update!(admin: identity.oidc_previous_admin?, developer: identity.oidc_previous_developer?)
       identity.update!(oidc_role_managed: false, oidc_role_group: nil)
     end

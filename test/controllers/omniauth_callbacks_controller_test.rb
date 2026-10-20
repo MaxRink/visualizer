@@ -92,6 +92,52 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
     assert_not user.developer?
   end
 
+  test "restores the prior roles when the configured admin group is renamed" do
+    ENV["OIDC_ADMIN_GROUP"] = "homelab-admins"
+    user = create(:user)
+    identity = create(:identity, user:, provider: "homelab_oidc", uid: "managed-subject",
+      oidc_role_managed: true, oidc_role_group: "homelab-admins",
+      oidc_previous_admin: false, oidc_previous_developer: true)
+    user.update!(admin: true, developer: true)
+    ENV["OIDC_ADMIN_GROUP"] = "new-admin-group"
+
+    get homelab_oidc_callback_url, env: oidc_env("managed-subject", user.email, true, ["users"])
+
+    assert_redirected_to shots_url
+    assert_not user.reload.admin?
+    assert user.developer?
+    assert_not identity.reload.oidc_role_managed?
+  end
+
+  test "restores the prior roles when the admin group is unset" do
+    user = create(:user)
+    identity = create(:identity, user:, provider: "homelab_oidc", uid: "managed-subject",
+      oidc_role_managed: true, oidc_role_group: "homelab-admins",
+      oidc_previous_admin: true, oidc_previous_developer: false)
+    user.update!(admin: true, developer: true)
+    ENV.delete("OIDC_ADMIN_GROUP")
+
+    get homelab_oidc_callback_url, env: oidc_env("managed-subject", user.email, true, ["users"])
+
+    assert_redirected_to shots_url
+    assert user.reload.admin?
+    assert_not user.developer?
+    assert_not identity.reload.oidc_role_managed?
+  end
+
+  test "does not alter an unmanaged local administrator" do
+    user = create(:user, :admin)
+    create(:identity, user:, provider: "homelab_oidc", uid: "local-admin-subject",
+      oidc_role_managed: false)
+    ENV.delete("OIDC_ADMIN_GROUP")
+
+    get homelab_oidc_callback_url, env: oidc_env("local-admin-subject", user.email, true, ["users"])
+
+    assert_redirected_to shots_url
+    assert user.reload.admin?
+    assert user.developer? == false
+  end
+
   test "does not create a user without a verified email claim" do
     assert_no_difference ["User.count", "Identity.count", "Session.count"] do
       get homelab_oidc_callback_url, env: oidc_env("new-subject", "new@example.test", false)
