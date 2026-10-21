@@ -92,6 +92,52 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
     assert_not user.developer?
   end
 
+  test "restores the prior roles when the configured admin group is renamed" do
+    ENV["OIDC_ADMIN_GROUP"] = "homelab-admins"
+    user = create(:user)
+    identity = create(:identity, user:, provider: "homelab_oidc", uid: "managed-subject",
+      oidc_role_managed: true, oidc_role_group: "homelab-admins",
+      oidc_previous_admin: false, oidc_previous_developer: true)
+    user.update!(admin: true, developer: true)
+    ENV["OIDC_ADMIN_GROUP"] = "new-admin-group"
+
+    get homelab_oidc_callback_url, env: oidc_env("managed-subject", user.email, true, ["users"])
+
+    assert_redirected_to shots_url
+    assert_not user.reload.admin?
+    assert user.developer?
+    assert_not identity.reload.oidc_role_managed?
+  end
+
+  test "restores the prior roles when the admin group is unset" do
+    user = create(:user)
+    identity = create(:identity, user:, provider: "homelab_oidc", uid: "managed-subject",
+      oidc_role_managed: true, oidc_role_group: "homelab-admins",
+      oidc_previous_admin: true, oidc_previous_developer: false)
+    user.update!(admin: true, developer: true)
+    ENV.delete("OIDC_ADMIN_GROUP")
+
+    get homelab_oidc_callback_url, env: oidc_env("managed-subject", user.email, true, ["users"])
+
+    assert_redirected_to shots_url
+    assert user.reload.admin?
+    assert_not user.developer?
+    assert_not identity.reload.oidc_role_managed?
+  end
+
+  test "does not alter an unmanaged local administrator" do
+    user = create(:user, :admin)
+    create(:identity, user:, provider: "homelab_oidc", uid: "local-admin-subject",
+      oidc_role_managed: false)
+    ENV.delete("OIDC_ADMIN_GROUP")
+
+    get homelab_oidc_callback_url, env: oidc_env("local-admin-subject", user.email, true, ["users"])
+
+    assert_redirected_to shots_url
+    assert user.reload.admin?
+    assert user.developer? == false
+  end
+
   test "does not create a user without a verified email claim" do
     assert_no_difference ["User.count", "Identity.count", "Session.count"] do
       get homelab_oidc_callback_url, env: oidc_env("new-subject", "new@example.test", false)
@@ -133,6 +179,12 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
   test "airtable callback connects premium users" do
     user = create(:user, :premium)
     sign_in(user)
+    stub_request(:get, "https://api.airtable.com/v0/meta/bases")
+      .to_return(status: 200, body: {bases: [{id: "appCreate", name: "Visualizer", permissionLevel: "create"}]}.to_json)
+    stub_request(:get, "https://api.airtable.com/v0/bases/appCreate/webhooks")
+      .to_return(status: 200, body: {webhooks: []}.to_json)
+    stub_request(:post, "https://api.airtable.com/v0/bases/appCreate/webhooks")
+      .to_return(status: 200, body: {id: "achNew"}.to_json)
 
     assert_enqueued_with(job: AirtableUploadAllJob, args: [user]) do
       get "/auth/airtable/callback"
@@ -140,6 +192,22 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to shots_path
     assert_equal 1, user.identities.by_provider(:airtable).count
+    assert_equal "appCreate", user.identities.by_provider(:airtable).first.airtable_info.base_id
+  end
+
+  test "airtable callback disconnects when no base can be created in" do
+    user = create(:user, :premium)
+    sign_in(user)
+    stub_request(:get, "https://api.airtable.com/v0/meta/bases")
+      .to_return(status: 200, body: {bases: [{id: "appEdit", name: "Visualizer", permissionLevel: "edit"}]}.to_json)
+
+    assert_no_enqueued_jobs only: AirtableUploadAllJob do
+      get "/auth/airtable/callback"
+    end
+
+    assert_redirected_to shots_path
+    assert_match "Creator", flash[:alert]
+    assert_empty user.identities.by_provider(:airtable)
   end
 
   test "airtable callback ignores non-premium users" do

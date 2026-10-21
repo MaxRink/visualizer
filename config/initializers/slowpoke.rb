@@ -1,7 +1,6 @@
 Rails.application.configure do
   config.slowpoke.timeout = 25
 end
-
 ActiveSupport::Notifications.subscribe "timeout.slowpoke" do |_name, _start, _finish, _id, payload|
   request = Rack::Request.new(payload[:env])
   error = payload[:error] || Appsignal::SimpleMessage.new("Request timed out")

@@ -12,9 +12,12 @@ class OmniauthCallbacksController < ApplicationController
     else
       Current.user.identities.create!(oauth.identifiers_with_blob_and_token)
     end
+    Airtable::Base.new(Current.user)
     AirtableUploadAllJob.perform_later(Current.user)
 
     redirect_to shots_path, notice: "Successfully connected to Airtable"
+  rescue Airtable::BaseError
+    redirect_to shots_path, alert: "Airtable not connected. Visualizer needs access to a base where you're a Creator. Please connect again and pick one."
   end
 
   def homelab_oidc
@@ -89,7 +92,7 @@ class OmniauthCallbacksController < ApplicationController
       end
 
       user.update!(admin: true, developer: true)
-    elsif identity.oidc_role_managed? && identity.oidc_role_group == ENV["OIDC_ADMIN_GROUP"].to_s.strip
+    elsif identity.oidc_role_managed?
       user.update!(admin: identity.oidc_previous_admin?, developer: identity.oidc_previous_developer?)
       identity.update!(oidc_role_managed: false, oidc_role_group: nil)
     end
