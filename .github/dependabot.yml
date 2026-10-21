@@ -10,3 +10,29 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+  - package-ecosystem: bundler
+    directory: /hotcell
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      routine-updates:
+        patterns:
+        - '*'
+        update-types:
+        - minor
+        - patch
+  - package-ecosystem: docker
+    directories:
+    - /
+    - /hotcell
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      routine-updates:
+        patterns:
+        - '*'
+        update-types:
+        - minor
+        - patch
