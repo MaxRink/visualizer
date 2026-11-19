@@ -10,7 +10,7 @@
 # you shipped, pin a digest (`FROM ruby:${RUBY_VERSION}-slim@sha256:…`) and refresh it on a schedule; the
 # image scan in CI is what catches a base that has drifted into known-vulnerable either way.
 ARG RUBY_VERSION
-FROM docker.io/library/ruby:${RUBY_VERSION:+${RUBY_VERSION}-}slim
+FROM docker.io/library/ruby:${RUBY_VERSION:+${RUBY_VERSION}-}slim AS base
 
 # Apply Debian's pending security patches. `--pull` takes the newest base tag, and the tag can still be
 # behind an advisory that is already in `trixie-security`, because only a rebuild by docker-library/ruby
@@ -58,9 +58,18 @@ WORKDIR /hotcell
 # Linux image accepts it — and build frozen (`bundle install --frozen`, or set `BUNDLE_FROZEN=true`) to
 # refuse a Gemfile that has drifted from the lockfile. Left off by default so a freshly installed scaffold
 # builds before you have generated a lockfile.
+# Gems with native extensions (json) compile in a throwaway stage, so the cell never carries a compiler.
+FROM base AS gems
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential && \
+    rm -rf /var/lib/apt/lists/*
 COPY --chown=hotcell:hotcell Gemfile* ./
 USER hotcell
 RUN bundle install
+
+FROM base
+COPY --chown=hotcell:hotcell Gemfile* ./
+COPY --from=gems --chown=hotcell:hotcell /hotcell/bundle /hotcell/bundle
 
 COPY config.rb /hotcell/config.rb
 COPY operations/ /hotcell/operations/
