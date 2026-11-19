@@ -7,3 +7,7 @@ source "https://rubygems.org"
 gem "hotcell-server", "1.0.0"
 
 gem "activestorage-hotcell-server", "1.0.0"
+
+# hotcell-core requires "json"; without a bundled copy Ruby's default json gem loads (4.0.7 ships
+# 2.18.0, CVE-2026-33210, fixed in 2.19.2).
+gem "json", ">= 2.19.2"
