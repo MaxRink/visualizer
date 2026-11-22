@@ -149,6 +149,7 @@ GEM
       bigdecimal
       rexml
     crass (1.0.8)
+    cruise (0.3.0)
     cruise (0.3.0-aarch64-linux-gnu)
     cruise (0.3.0-arm64-darwin)
     cruise (0.3.0-x86_64-linux-gnu)
@@ -177,6 +178,7 @@ GEM
       logger
     faraday-net_http (3.5.0)
       net-http (~> 0.5)
+    ffi (1.17.4)
     ffi (1.17.4-aarch64-linux-gnu)
     ffi (1.17.4-arm64-darwin)
     ffi (1.17.4-x86_64-linux-gnu)
@@ -185,6 +187,9 @@ GEM
       raabro (~> 1.4)
     globalid (1.4.0)
       activesupport (>= 6.1)
+    google-protobuf (4.36.2)
+      bigdecimal
+      rake (~> 13.3)
     google-protobuf (4.36.2-aarch64-linux-gnu)
       bigdecimal
       rake (~> 13.3)
@@ -197,6 +202,7 @@ GEM
     hashdiff (1.2.2)
     hashie (5.2.0)
       logger
+    herb (0.11.2)
     herb (0.11.2-aarch64-linux-gnu)
     herb (0.11.2-arm64-darwin)
     herb (0.11.2-x86_64-linux-gnu)
@@ -270,6 +276,7 @@ GEM
     marcel (1.2.1)
     memo_wise (1.13.0)
     mini_mime (1.1.5)
+    mini_portile2 (2.8.9)
     minitest (6.1.0)
       drb (~> 2.0)
       prism (>= 1.5, < 3)
@@ -305,6 +312,9 @@ GEM
     net-ssh (7.3.10)
       logger
     nio4r (2.7.5)
+    nokogiri (1.19.7)
+      mini_portile2 (~> 2.8.2)
+      racc (~> 1.4)
     nokogiri (1.19.7-aarch64-linux-gnu)
       racc (~> 1.4)
     nokogiri (1.19.7-arm64-darwin)
@@ -346,6 +356,7 @@ GEM
       racc
     pastel (0.8.0)
       tty-color (~> 0.5)
+    pg (1.7.0)
     pg (1.7.0-aarch64-linux)
     pg (1.7.0-arm64-darwin)
     pg (1.7.0-x86_64-linux)
@@ -529,10 +540,12 @@ GEM
     tailwindcss-rails (4.7.0)
       railties (>= 7.0.0)
       tailwindcss-ruby (~> 4.0)
+    tailwindcss-ruby (4.3.4)
     tailwindcss-ruby (4.3.4-aarch64-linux-gnu)
     tailwindcss-ruby (4.3.4-arm64-darwin)
     tailwindcss-ruby (4.3.4-x86_64-linux-gnu)
     thor (1.5.0)
+    thruster (0.1.28)
     thruster (0.1.28-aarch64-linux)
     thruster (0.1.28-arm64-darwin)
     thruster (0.1.28-x86_64-linux)
@@ -579,7 +592,7 @@ GEM
       openssl (>= 2.2)
       safety_net_attestation (~> 0.5.0)
       tpm-key_attestation (~> 0.14.0)
-    webmock (3.36.0)
+    webmock (3.38.0)
       addressable (>= 2.8.0)
       crack (>= 0.3.2)
       hashdiff (>= 0.4.0, < 2.0.0)
@@ -661,4 +674,4 @@ DEPENDENCIES
   webmock
 
 BUNDLED WITH
-  4.0.24
+  4.1.0
