@@ -10,5 +10,3 @@
   attribute = name.downcase
   Rails.application.config.active_record.encryption.public_send("#{attribute}=", value)
 end
-
-ApiToken.ensure_encryption_configured! if defined?(ApiToken) && Rails.env.production?
