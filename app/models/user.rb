@@ -130,23 +130,35 @@ class User < ApplicationRecord
 
   class LastAdminError < StandardError; end
 
-  # Conditional updates make "never remove the last admin" atomic: the EXISTS
-  # check runs in the same statement as the write, so two concurrent demotions
-  # cannot both believe another admin still exists.
+  # Admin changes lock the admin rows inside one transaction, so the check and
+  # the write cannot interleave with another demotion, disable or delete.
   def demote_admin!
-    # update_all is deliberate: the write must be conditional in the same SQL
-    # statement as the EXISTS check, and no model validations are involved.
-    self.class.where(id:, admin: true).where(another_admin_exists_sql).update_all(admin: false, updated_at: Time.current) == 1 # rubocop:disable Rails/SkipsModelValidations
+    self.class.transaction do
+      admins = admin_ids_locked
+      if admins.include?(id) && admins.size > 1
+        update!(admin: false)
+        true
+      else
+        false
+      end
+    end
   end
 
   def disable!
-    self.class.where(id:).where("NOT admin OR #{another_admin_exists_sql}").update_all(disabled_at: Time.current, updated_at: Time.current) == 1 # rubocop:disable Rails/SkipsModelValidations
+    self.class.transaction do
+      admins = admin_ids_locked
+      if admins.include?(id) && admins.size == 1
+        false
+      else
+        update!(disabled_at: Time.current)
+        true
+      end
+    end
   end
 
   def destroy_unless_last_admin!
     self.class.transaction do
-      self.class.where(admin: true).lock.pluck(:id)
-      raise LastAdminError if self.class.where(id:).pick(:admin) && self.class.where(admin: true).where.not(id:).none?
+      raise LastAdminError if admin_ids_locked == [id]
 
       destroy!
     end
@@ -246,8 +258,10 @@ class User < ApplicationRecord
 
   private
 
-  def another_admin_exists_sql
-    "EXISTS (SELECT 1 FROM users other_users WHERE other_users.admin AND other_users.id <> users.id)"
+  # FOR UPDATE serialises concurrent admin changes; call this inside the
+  # transaction that performs the write.
+  def admin_ids_locked
+    self.class.where(admin: true).lock.pluck(:id)
   end
 
   def email_domain_must_receive_mail
