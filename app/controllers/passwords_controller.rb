@@ -1,5 +1,5 @@
 class PasswordsController < ApplicationController
-  rate_limit to: 5, within: 15.minutes, name: "passwords-create", only: :create, with: -> { redirect_to new_password_url, alert: "Try again later." }
+  rate_limit to: 5, within: 15.minutes, name: "passwords-create", only: :create, if: -> { RateLimits.enabled? }, with: -> { redirect_to new_password_url, alert: "Try again later." }
 
   before_action :set_user_by_token, only: %i[edit update]
 

@@ -8,6 +8,10 @@ class CoffeeBag < ApplicationRecord
   performs :refresh_shot_values
 
   DISPLAY_ATTRIBUTES = %w[roast_level country region farm farmer variety elevation processing harvest_time quality_score tasting_notes place_of_purchase].freeze
+  # Descriptive fields a personal bag inherits from its canonical (curated)
+  # record when the bag does not set them itself. The name stays bag-owned, and
+  # farm, quality_score and place_of_purchase have no canonical counterpart.
+  CANONICAL_INHERITED_ATTRIBUTES = (DISPLAY_ATTRIBUTES - %w[name farm quality_score place_of_purchase]).freeze
 
   belongs_to :roaster, touch: true
   belongs_to :canonical_coffee_bag, optional: true
@@ -24,6 +28,7 @@ class CoffeeBag < ApplicationRecord
   validates_variable_image :image
   validate :defrosted_date_after_frozen_date
 
+  before_validation :inherit_descriptive_fields_from_canonical, if: -> { canonical_coffee_bag_id.present? && canonical_coffee_bag_id_changed? }
   after_save_commit :refresh_shot_values_later, if: -> { saved_changes.keys.intersect?(%w[name roast_date roast_level roaster_id canonical_coffee_bag_id]) }
 
   scope :filter_by_name, ->(name) { where("LOWER(coffee_bags.name) = ?", name.downcase.squish) }
@@ -111,6 +116,12 @@ class CoffeeBag < ApplicationRecord
   end
 
   private
+
+  def inherit_descriptive_fields_from_canonical
+    CANONICAL_INHERITED_ATTRIBUTES.each do |attribute|
+      self[attribute] = canonical_coffee_bag.public_send(attribute) if self[attribute].blank?
+    end
+  end
 
   def defrosted_date_after_frozen_date
     if frozen_date.blank? && defrosted_date.present?

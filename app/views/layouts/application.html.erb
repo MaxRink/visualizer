@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full has-[>body.overscroll-y-none]:overscroll-y-none" data-environment="<%= Rails.env %>">
+<html lang="en" class="h-full has-[>body.overscroll-y-none]:overscroll-y-none" data-environment="<%= Rails.env %>" data-skin="<%= @skin %>">
   <head>
     <title><%= content_for?(:html_title) ? yield(:html_title) : "Visualizer" %></title>
     <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport">
@@ -22,6 +22,15 @@
     <%= preload_link_tag "inter-latin.woff2", type: "font/woff2" %>
     <%= preload_link_tag "cormorant-latin.woff2", type: "font/woff2" %>
     <%= stylesheet_link_tag "tailwind", "lexxy", "data-turbo-track": "reload" %>
+    <script>
+      // Resolve the theme before the first paint so there is no light flash.
+      (() => {
+        const skin = document.documentElement.dataset.skin
+        const stored = localStorage.getItem("visualizer.theme")
+        const dark = skin === "dark" || (skin !== "light" && (stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches))
+        document.documentElement.classList.toggle("dark", dark)
+      })()
+    </script>
     <%= javascript_importmap_tags %>
   </head>
   <body class="flex flex-col bg-white text-neutral-900 dark:bg-neutral-950 dark:text-white <%= content_for?(:contained_layout) ? 'h-dvh overflow-hidden overscroll-y-none' : 'h-full overflow-y-scroll' %> <%= @skin %>" data-controller="local-time">
@@ -33,6 +42,7 @@
     <footer class="shrink-0">
       <%= inline_svg_tag "logo-bars-clip.svg", class: "size-0" %>
       <%= render "shared/footer" %>
+      <%= render "shared/self_hosted_notice" %>
     </footer>
   </body>
 </html>

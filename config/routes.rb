@@ -19,6 +19,7 @@ Rails.application.routes.draw do
   root to: "home#show"
 
   resource :session, only: %i[new create destroy]
+  resource :theme, only: :update
   resources :passwords, param: :token, only: %i[new create edit update]
   resources :registrations, only: %i[new create]
   resources :confirmations, param: :token, only: %i[show create]
@@ -58,6 +59,7 @@ Rails.application.routes.draw do
   end
 
   get :heartbeat, to: "heartbeat#show"
+  get :health, to: "health#show"
   get :privacy, to: "home#privacy"
 
   # Billing providers are a SaaS-only integration; self-hosted installs cannot
@@ -137,6 +139,19 @@ Rails.application.routes.draw do
   resource :shot_metadata, only: %i[create destroy]
   resource :coffee_bag_metadata, only: %i[create destroy]
   resources :dropdown_values, only: %i[index update]
+
+  namespace :admin do
+    root to: "dashboard#show"
+    resources :users, only: %i[index destroy] do
+      member do
+        post :promote
+        post :demote
+        post :disable
+        post :enable
+        delete :revoke_upload_key
+      end
+    end
+  end
 
   resources :premium, only: %i[index create] do
     collection do

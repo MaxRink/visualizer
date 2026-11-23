@@ -12,7 +12,7 @@ class UpdatesController < ApplicationController
   end
 
   def feed
-    @updates = Update.with_rich_text_body_and_embeds.order(published_at: :desc).limit(20)
+    @updates = Update.with_rich_text_body_and_embeds.order(published_at: :desc).limit(Limits.feed_items)
     render formats: :rss if stale?(etag: @updates)
   end
 

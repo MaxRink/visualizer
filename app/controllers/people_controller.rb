@@ -34,7 +34,7 @@ class PeopleController < ApplicationController
     elsif !@user.public
       head :not_found
     else
-      @shots = @user.shots.by_start_time.non_premium.limit(30)
+      @shots = @user.shots.by_start_time.non_premium.limit(Limits.feed_items)
       render formats: :rss
     end
   end

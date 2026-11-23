@@ -186,4 +186,61 @@ class CoffeeBagTest < ActiveSupport::TestCase
     perform_enqueued_jobs { coffee_bag.update!(canonical_coffee_bag: nil) }
     assert_nil shot.reload.canonical_coffee_bag_id
   end
+
+  test "inherits blank descriptive fields from canonical when linked, preserving set ones" do
+    canonical_roaster = CanonicalRoaster.create!(name: "Luma")
+    canonical = CanonicalCoffeeBag.create!(name: "Kiambu", canonical_roaster:, roast_level: "Light", country: "Kenya", region: "Kiambu", farmer: "Smallholders", variety: "SL28", tasting_notes: "Black currant")
+    coffee_bag = create(:coffee_bag, roaster:, country: nil, region: "My own region")
+
+    coffee_bag.update!(canonical_coffee_bag: canonical)
+    coffee_bag.reload
+
+    assert_equal "Kenya", coffee_bag.country
+    assert_equal "Smallholders", coffee_bag.farmer
+    assert_equal "SL28", coffee_bag.variety
+    assert_equal "Black currant", coffee_bag.tasting_notes
+    assert_equal "Light", coffee_bag.roast_level
+    assert_equal "My own region", coffee_bag.region
+  end
+
+  test "does not wipe descriptive fields when the canonical is later unlinked" do
+    canonical_roaster = CanonicalRoaster.create!(name: "Luma")
+    canonical = CanonicalCoffeeBag.create!(name: "Kiambu", canonical_roaster:, country: "Kenya", variety: "SL28")
+    coffee_bag = create(:coffee_bag, roaster:, country: nil)
+    coffee_bag.update!(canonical_coffee_bag: canonical)
+
+    coffee_bag.update!(canonical_coffee_bag: nil)
+    coffee_bag.reload
+
+    assert_equal "Kenya", coffee_bag.country
+    assert_equal "SL28", coffee_bag.variety
+  end
+
+  test "re-linking to a different canonical fills only still-blank fields" do
+    canonical_roaster = CanonicalRoaster.create!(name: "Luma")
+    first = CanonicalCoffeeBag.create!(name: "First", canonical_roaster:, country: "Kenya")
+    second = CanonicalCoffeeBag.create!(name: "Second", canonical_roaster:, country: "Ethiopia", variety: "Heirloom")
+    coffee_bag = create(:coffee_bag, roaster:, country: nil, variety: nil)
+
+    coffee_bag.update!(canonical_coffee_bag: first)
+    coffee_bag.update!(canonical_coffee_bag: second)
+    coffee_bag.reload
+
+    assert_equal "Kenya", coffee_bag.country
+    assert_equal "Heirloom", coffee_bag.variety
+  end
+
+  test "leaves fields the canonical lacks untouched" do
+    canonical_roaster = CanonicalRoaster.create!(name: "Luma")
+    canonical = CanonicalCoffeeBag.create!(name: "Kiambu", canonical_roaster:, country: "Kenya")
+    coffee_bag = create(:coffee_bag, roaster:, farm: "My Farm", quality_score: "88", place_of_purchase: "Local shop", country: nil)
+
+    coffee_bag.update!(canonical_coffee_bag: canonical)
+    coffee_bag.reload
+
+    assert_equal "My Farm", coffee_bag.farm
+    assert_equal "88", coffee_bag.quality_score
+    assert_equal "Local shop", coffee_bag.place_of_purchase
+    assert_equal "Kenya", coffee_bag.country
+  end
 end

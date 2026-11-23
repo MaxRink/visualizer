@@ -5,10 +5,10 @@ class SystemOne
   class Error < StandardError; end
 
   RETRYABLE_CODES = %w[408 429 500 502 503 504].freeze
-  MAX_ATTEMPTS = 3
-  MAX_REQUEST_BYTES = 128 * 1024
-  MAX_RESPONSE_BYTES = 64 * 1024
-  MAX_COMPLETION_TOKENS = 512
+  MAX_ATTEMPTS = ENV.fetch("VISUALIZER_INFERENCE_MAX_ATTEMPTS", 3).to_i
+  MAX_REQUEST_BYTES = ENV.fetch("VISUALIZER_INFERENCE_MAX_REQUEST_BYTES", 128 * 1024).to_i
+  MAX_RESPONSE_BYTES = ENV.fetch("VISUALIZER_INFERENCE_MAX_RESPONSE_BYTES", 64 * 1024).to_i
+  MAX_COMPLETION_TOKENS = ENV.fetch("VISUALIZER_INFERENCE_MAX_COMPLETION_TOKENS", 512).to_i
 
   def initialize(api_endpoint: ENV.fetch("VISUALIZER_INFERENCE_BASE_URL"), model: ENV.fetch("VISUALIZER_INFERENCE_MODEL"), api_key: ENV.fetch("VISUALIZER_INFERENCE_API_KEY"))
     @uri = validated_uri(api_endpoint)
@@ -23,7 +23,7 @@ class SystemOne
       model: @model,
       messages: [
         {role: "system", content: "Answer the supplied espresso questions using only the supplied shot state. Return one JSON object with an answers object; do not include markdown."},
-        {role: "user", content: {state: state, questions: questions}.to_json}
+        {role: "user", content: {state:, questions:}.to_json}
       ],
       response_format: {type: "json_object"},
       temperature: 0,
@@ -45,9 +45,8 @@ class SystemOne
   def validated_uri(value)
     uri = URI.parse(value)
     valid_scheme = uri.is_a?(URI::HTTPS) || (uri.is_a?(URI::HTTP) && private_ip?(uri.host))
-    unless valid_scheme && uri.path == "/v1/chat/completions" && uri.userinfo.nil? && uri.query.nil? && uri.fragment.nil?
-      raise Error, "VISUALIZER_INFERENCE_BASE_URL must be HTTPS or a private HTTP Chat Completions endpoint"
-    end
+    valid_path = uri.path == "/v1/chat/completions" && uri.userinfo.nil? && uri.query.nil? && uri.fragment.nil?
+    raise Error, "VISUALIZER_INFERENCE_BASE_URL must be HTTPS or a private HTTP Chat Completions endpoint" unless valid_scheme && valid_path
 
     uri
   rescue URI::InvalidURIError

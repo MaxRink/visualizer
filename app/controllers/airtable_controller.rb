@@ -1,5 +1,5 @@
 class AirtableController < ApplicationController
-  rate_limit to: 60, within: 1.minute, name: "airtable-notification"
+  rate_limit to: 60, within: 1.minute, name: "airtable-notification", if: -> { RateLimits.enabled? }
 
   skip_before_action :verify_authenticity_token
 

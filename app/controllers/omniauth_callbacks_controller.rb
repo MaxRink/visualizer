@@ -50,7 +50,7 @@ class OmniauthCallbacksController < ApplicationController
       existing_user = User.find_by(email:)
       if existing_user
         request_oidc_link_confirmation(existing_user, subject, email, raw_info)
-      else
+      elsif oidc_invited?(raw_info)
         User.transaction do
           user = User.create!(email:, password: SecureRandom.base58(32), confirmed_at: Time.current, oidc_provisioned: true)
           identity = user.identities.create!(provider: "homelab_oidc", uid: subject, blob: auth)
@@ -58,6 +58,8 @@ class OmniauthCallbacksController < ApplicationController
           start_new_session_for(user)
         end
         redirect_to after_authentication_url, notice: "OpenID Connect account created"
+      else
+        render_not_invited
       end
     end
   rescue ActiveRecord::RecordNotUnique
@@ -93,6 +95,19 @@ class OmniauthCallbacksController < ApplicationController
     UserMailer.with(user:, token:).oidc_link.deliver_later
 
     redirect_to homelab_oidc_link_path, notice: "Check #{user.email} for a link to finish connecting OpenID Connect."
+  end
+
+  # OIDC_ALLOWED_GROUP, when set, admits new accounts only from that group;
+  # unset keeps the previous "any verified identity" behaviour.
+  def oidc_invited?(raw_info)
+    allowed_group = ENV["OIDC_ALLOWED_GROUP"].to_s.strip
+    return true if allowed_group.blank?
+
+    OidcRole.matched_group(raw_info["groups"] || raw_info[:groups], trusted_group: allowed_group).present?
+  end
+
+  def render_not_invited
+    render "omniauth_callbacks/not_invited", status: :forbidden
   end
 
   def apply_oidc_admin_role(user, identity, raw_info)

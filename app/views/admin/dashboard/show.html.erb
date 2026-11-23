@@ -1,0 +1,35 @@
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div>
+      <h1 class="font-serif text-3xl font-bold text-neutral-900 dark:text-neutral-100">Admin</h1>
+      <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">Instance overview and user management.</p>
+    </div>
+    <div class="mt-4 sm:mt-0">
+      <%= link_to "Users", admin_users_path, class: "button-white px-3 py-2 text-sm" %>
+    </div>
+  </div>
+
+  <dl class="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <% { "Users" => @counts[:users], "Shots" => @counts[:shots], "Coffee bags" => @counts[:coffee_bags], "Roasters" => @counts[:roasters] }.each do |label, value| %>
+      <div class="rounded-lg bg-neutral-50 p-4 dark:bg-neutral-800">
+        <dt class="text-sm text-neutral-600 dark:text-neutral-400"><%= label %></dt>
+        <dd class="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100"><%= number_with_delimiter(value) %></dd>
+      </div>
+    <% end %>
+  </dl>
+
+  <dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div class="rounded-lg bg-neutral-50 p-4 dark:bg-neutral-800">
+      <dt class="text-sm text-neutral-600 dark:text-neutral-400">Active Storage</dt>
+      <dd class="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100"><%= number_to_human_size(@storage_bytes) %></dd>
+    </div>
+    <div class="rounded-lg bg-neutral-50 p-4 dark:bg-neutral-800">
+      <dt class="text-sm text-neutral-600 dark:text-neutral-400">Oldest shot</dt>
+      <dd class="mt-1 text-lg font-semibold text-neutral-900 dark:text-neutral-100"><%= @oldest_shot_at ? l(@oldest_shot_at, format: :long) : "—" %></dd>
+    </div>
+    <div class="rounded-lg bg-neutral-50 p-4 dark:bg-neutral-800">
+      <dt class="text-sm text-neutral-600 dark:text-neutral-400">Newest shot</dt>
+      <dd class="mt-1 text-lg font-semibold text-neutral-900 dark:text-neutral-100"><%= @newest_shot_at ? l(@newest_shot_at, format: :long) : "—" %></dd>
+    </div>
+  </dl>
+</div>

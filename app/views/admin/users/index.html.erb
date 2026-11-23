@@ -1,0 +1,82 @@
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div>
+      <h1 class="font-serif text-3xl font-bold text-neutral-900 dark:text-neutral-100">Users</h1>
+      <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+        Page <%= @page %>. Actions are written to the application log.
+      </p>
+    </div>
+    <div class="mt-4 sm:mt-0">
+      <%= link_to "Overview", admin_root_path, class: "button-white px-3 py-2 text-sm" %>
+    </div>
+  </div>
+
+  <div class="mt-8 overflow-x-auto">
+    <table class="min-w-full divide-y divide-neutral-200 text-sm dark:divide-neutral-700">
+      <thead>
+        <tr class="text-left text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+          <th class="py-3 pr-4">Email</th>
+          <th class="py-3 pr-4">Role</th>
+          <th class="py-3 pr-4">OIDC</th>
+          <th class="py-3 pr-4">Last sign-in</th>
+          <th class="py-3 pr-4 text-right">Shots</th>
+          <th class="py-3 pr-4">Upload key</th>
+          <th class="py-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-neutral-200 dark:divide-neutral-700">
+        <% @users.each do |user| %>
+          <tr class="<%= "opacity-60" if user.disabled? %>">
+            <td class="py-3 pr-4 text-neutral-900 dark:text-neutral-100">
+              <div class="truncate"><%= user.email %></div>
+              <% unless user.confirmed? %>
+                <div class="text-xs text-amber-600 dark:text-amber-400">unconfirmed</div>
+              <% end %>
+            </td>
+            <td class="py-3 pr-4 text-neutral-700 dark:text-neutral-300">
+              <%= user.admin? ? "admin" : (user.developer? ? "developer" : "user") %>
+              <% if user.disabled? %><span class="text-xs text-red-600 dark:text-red-400">disabled</span><% end %>
+            </td>
+            <td class="py-3 pr-4 text-neutral-700 dark:text-neutral-300">
+              <% providers = user.identities.map(&:provider_label).uniq %>
+              <%= providers.any? ? providers.join(", ") : "—" %>
+              <% if user.oidc_provisioned? %><span class="text-xs text-neutral-500 dark:text-neutral-400">(JIT)</span><% end %>
+            </td>
+            <td class="py-3 pr-4 text-neutral-700 dark:text-neutral-300">
+              <%= @last_signed_in_at[user.id] ? time_ago_in_words(@last_signed_in_at[user.id]) + " ago" : "never" %>
+            </td>
+            <td class="py-3 pr-4 text-right text-neutral-700 dark:text-neutral-300"><%= @shot_counts.fetch(user.id, 0) %></td>
+            <td class="py-3 pr-4 text-neutral-700 dark:text-neutral-300"><%= @upload_key_user_ids.include?(user.id) ? "yes" : "—" %></td>
+            <td class="py-3">
+              <div class="flex flex-wrap items-center gap-2">
+                <% if user.admin? %>
+                  <%= button_to "Demote", demote_admin_user_path(user), class: "button-white px-2 py-1 text-xs" %>
+                <% else %>
+                  <%= button_to "Promote", promote_admin_user_path(user), class: "button-white px-2 py-1 text-xs" %>
+                <% end %>
+                <% if user.disabled? %>
+                  <%= button_to "Enable", enable_admin_user_path(user), class: "button-white px-2 py-1 text-xs" %>
+                <% else %>
+                  <%= button_to "Disable", disable_admin_user_path(user), class: "button-white px-2 py-1 text-xs", form: {data: {turbo_confirm: "Disable #{user.email}? They are signed out and cannot sign in until re-enabled."}} %>
+                <% end %>
+                <%= button_to "Revoke key", revoke_upload_key_admin_user_path(user), class: "button-white px-2 py-1 text-xs", form: {data: {turbo_confirm: "Revoke every upload key for #{user.email}?"}} %>
+                <%= button_to "Delete", admin_user_path(user), method: :delete, class: "text-xs text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300", form: {data: {turbo_confirm: "Delete #{user.email}? This destroys their identities, roasters, coffee bags, tags, sessions and upload keys. Their #{@shot_counts.fetch(user.id, 0)} shot(s) are kept but become ownerless."}} %>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-6 flex items-center justify-between text-sm">
+    <% if @page > 1 %>
+      <%= link_to "Previous", admin_users_path(page: @page - 1), class: "standard-link" %>
+    <% else %>
+      <span></span>
+    <% end %>
+    <% if @has_next %>
+      <%= link_to "Next", admin_users_path(page: @page + 1), class: "standard-link" %>
+    <% end %>
+  </div>
+</div>

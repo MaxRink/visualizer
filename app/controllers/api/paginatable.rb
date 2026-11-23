@@ -4,7 +4,7 @@ module Api
       page = [params[:page].to_i, 1].max
       limit = params[:items].presence.to_i
       limit = 10 unless limit.positive?
-      limit = [limit, 100].min
+      limit = [limit, Limits.api_max_items].min
 
       if with_counts
         count = relation.count(:all)

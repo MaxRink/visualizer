@@ -75,6 +75,21 @@ module Api
       assert_equal 3, json_response["data"].length
     end
 
+    test "self-hosted installs are not capped at 100 items" do
+      FactoryBot.create_list(:shot, 101, user:, public: true, created_at: 2.days.ago)
+      previous = ENV["VISUALIZER_SELF_HOSTED"]
+      ENV["VISUALIZER_SELF_HOSTED"] = "true"
+      begin
+        get api_shots_url, headers: auth_headers(user), params: {items: 101}, as: :json
+      ensure
+        ENV["VISUALIZER_SELF_HOSTED"] = previous
+      end
+
+      assert_response :success
+      assert_equal 101, response.parsed_body["data"].length
+      assert_equal 101, response.parsed_body.dig("paging", "limit")
+    end
+
     test "index caps limit at 100" do
       FactoryBot.create_list(:shot, 101, user:, public: true, start_time: 2.days.ago, created_at: 2.days.ago)
 

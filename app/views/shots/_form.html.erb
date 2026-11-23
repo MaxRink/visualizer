@@ -64,7 +64,7 @@
               <%= f.label :canonical_coffee_bag_search, "Search Loffee Labs Bean Base", class: "standard-label" %>
               <%= f.hidden_field :canonical_coffee_bag_id, data: { autocomplete_target: "hidden", canonical_selector_target: "id" } %>
               <%= f.search_field :canonical_coffee_bag_search, value: "#{@shot.canonical_coffee_bag&.name}", class: "mt-1 standard-input", data: { autocomplete_target: "input" } %>
-              <ul class="absolute z-10 mt-2 max-h-96 list-group overflow-y-auto rounded-md bg-white shadow-lg ring-1 ring-black/5" data-autocomplete-target="results"></ul>
+              <ul class="absolute z-10 mt-2 max-h-96 list-group overflow-y-auto rounded-md bg-white shadow-lg ring-1 ring-black/5 dark:bg-neutral-800 dark:ring-white/10" data-autocomplete-target="results"></ul>
             </div>
             <div class="col-span-6 sm:col-span-3">
               <%= shot_copyable_label(f, :bean_brand) do %>

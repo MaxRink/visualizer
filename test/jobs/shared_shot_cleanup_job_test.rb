@@ -11,6 +11,22 @@ class SharedShotCleanupJobTest < ActiveJob::TestCase
     assert_not SharedShot.find_by(id: old.id)
   end
 
+  test "VISUALIZER_SHARE_TTL_HOURS overrides the ttl" do
+    fresh = create(:shared_shot, code: "AAAA", created_at: 90.minutes.ago)
+    stale = create(:shared_shot, code: "BBBB", created_at: 3.hours.ago)
+
+    previous = ENV["VISUALIZER_SHARE_TTL_HOURS"]
+    ENV["VISUALIZER_SHARE_TTL_HOURS"] = "2"
+    begin
+      SharedShotCleanupJob.perform_now
+    ensure
+      ENV["VISUALIZER_SHARE_TTL_HOURS"] = previous
+    end
+
+    assert SharedShot.find_by(id: fresh.id)
+    assert_not SharedShot.find_by(id: stale.id)
+  end
+
   test "self-hosted installs keep share codes for 30 days" do
     recent = create(:shared_shot, created_at: 2.days.ago)
 
