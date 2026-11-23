@@ -35,6 +35,7 @@ class ProfilesController < ApplicationController
 
   def set_profile
     @profile = Current.user
+    @upload_key = Current.user.upload_key
   end
 
   def set_authorized_applications

@@ -120,6 +120,7 @@ Rails.application.routes.draw do
   get "/search", to: redirect("/community")
 
   resource :profile, only: %i[edit update] do
+    resource :upload_key, only: %i[create destroy]
     resource :journal_columns, only: :update
     get :reset_chart_settings
     delete :disconnect_airtable

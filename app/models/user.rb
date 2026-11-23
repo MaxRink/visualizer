@@ -28,6 +28,7 @@ class User < ApplicationRecord
   has_many :push_subscriptions, dependent: :destroy
   has_many :webauthn_credentials, dependent: :destroy
   has_many :dropdown_values, dependent: :destroy
+  has_many :api_tokens, dependent: :destroy
 
   has_one_attached :avatar do |attachable|
     attachable.variant :thumb, resize_to_limit: [96, 96], format: :jpeg, saver: {strip: true}
@@ -137,6 +138,17 @@ class User < ApplicationRecord
 
   def can_manage_premium?
     creem_customer_id.present? || lemon_squeezy_customer_id.present?
+  end
+
+  def upload_key
+    api_tokens.active.order(:created_at).last
+  end
+
+  def rotate_upload_key!
+    transaction do
+      api_tokens.active.find_each(&:revoke!)
+      api_tokens.create!
+    end
   end
 
   def self_hosted?

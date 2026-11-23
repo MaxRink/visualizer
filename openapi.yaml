@@ -11,6 +11,7 @@ info:
     | --- | --- |
     | OAuth 2.0 authorization code flow | Apps that other people use. Register an app at https://visualizer.coffee/oauth/applications after signing in. |
     | HTTP Basic (email and password) | Personal scripts and local tooling. |
+    | Upload key (`Authorization: Bearer` or `X-Upload-Key`) | Accounts without a Visualizer password, such as OpenID Connect sign-ins. Copy the key from your profile page. |
 
     Use OAuth for anything you distribute, so your app never handles Visualizer passwords. Access tokens expire after one week; use the refresh token to get a new one.
 
@@ -93,6 +94,7 @@ paths:
       security:
         - OAuth2: [read]
         - BasicAuth: []
+        - UploadKey: []
       responses:
         "200":
           description: The authenticated account.
@@ -131,6 +133,7 @@ paths:
       security:
         - OAuth2: [read]
         - BasicAuth: []
+        - UploadKey: []
         - {}
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -198,6 +201,7 @@ paths:
         - OAuth2: [upload]
         - OAuth2: [write]
         - BasicAuth: []
+        - UploadKey: []
       requestBody:
         required: true
         content:
@@ -253,6 +257,7 @@ paths:
       security:
         - OAuth2: [read]
         - BasicAuth: []
+        - UploadKey: []
         - {}
       parameters:
         - $ref: "#/components/parameters/SharedCode"
@@ -286,6 +291,7 @@ paths:
       security:
         - OAuth2: [read]
         - BasicAuth: []
+        - UploadKey: []
         - {}
       parameters:
         - $ref: "#/components/parameters/ShotFormat"
@@ -318,6 +324,7 @@ paths:
       security:
         - OAuth2: [write]
         - BasicAuth: []
+        - UploadKey: []
       parameters:
         - $ref: "#/components/parameters/Essentials"
       requestBody:
@@ -379,6 +386,7 @@ paths:
       security:
         - OAuth2: [write]
         - BasicAuth: []
+        - UploadKey: []
       responses:
         "200":
           $ref: "#/components/responses/Deleted"
@@ -402,6 +410,7 @@ paths:
       security:
         - OAuth2: [read]
         - BasicAuth: []
+        - UploadKey: []
         - {}
       parameters:
         - $ref: "#/components/parameters/ShotFormat"
@@ -436,6 +445,7 @@ paths:
       security:
         - OAuth2: [read]
         - BasicAuth: []
+        - UploadKey: []
         - {}
       parameters:
         - $ref: "#/components/parameters/ProfileFormat"
@@ -477,6 +487,7 @@ paths:
       security:
         - OAuth2: [read]
         - BasicAuth: []
+        - UploadKey: []
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Items"
@@ -501,6 +512,7 @@ paths:
       security:
         - OAuth2: [write]
         - BasicAuth: []
+        - UploadKey: []
       requestBody:
         required: true
         content:
@@ -543,6 +555,7 @@ paths:
       security:
         - OAuth2: [read]
         - BasicAuth: []
+        - UploadKey: []
       responses:
         "200":
           description: The roaster.
@@ -566,6 +579,7 @@ paths:
       security:
         - OAuth2: [write]
         - BasicAuth: []
+        - UploadKey: []
       requestBody:
         required: true
         content:
@@ -613,6 +627,7 @@ paths:
       security:
         - OAuth2: [write]
         - BasicAuth: []
+        - UploadKey: []
       responses:
         "200":
           $ref: "#/components/responses/Deleted"
@@ -637,6 +652,7 @@ paths:
       security:
         - OAuth2: [read]
         - BasicAuth: []
+        - UploadKey: []
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Items"
@@ -662,6 +678,7 @@ paths:
       security:
         - OAuth2: [write]
         - BasicAuth: []
+        - UploadKey: []
       requestBody:
         required: true
         content:
@@ -706,6 +723,7 @@ paths:
       security:
         - OAuth2: [read]
         - BasicAuth: []
+        - UploadKey: []
       responses:
         "200":
           description: The coffee bag.
@@ -734,6 +752,7 @@ paths:
       security:
         - OAuth2: [write]
         - BasicAuth: []
+        - UploadKey: []
       requestBody:
         required: true
         content:
@@ -797,6 +816,7 @@ paths:
       security:
         - OAuth2: [write]
         - BasicAuth: []
+        - UploadKey: []
       responses:
         "200":
           $ref: "#/components/responses/Deleted"
@@ -856,6 +876,12 @@ components:
       type: http
       scheme: basic
       description: Your Visualizer email and password.
+    UploadKey:
+      type: http
+      scheme: bearer
+      description: |
+        A per-user upload key from your profile page. Send it as `Authorization: Bearer <key>` or in the `X-Upload-Key` header.
+        Upload keys are for users who sign in with OpenID Connect and do not have a Visualizer password. They are not scoped.
     OAuth2:
       type: oauth2
       description: Authorization code flow, with optional PKCE (S256). Register an app at https://visualizer.coffee/oauth/applications.

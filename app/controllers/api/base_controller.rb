@@ -23,7 +23,25 @@ module Api
     end
 
     def resume_session
-      Current.session ||= session_from_doorkeeper || session_from_basic
+      Current.session ||= session_from_upload_key || session_from_doorkeeper || session_from_basic
+    end
+
+    def session_from_upload_key
+      plaintext = upload_key_from_request
+      return if plaintext.blank?
+
+      api_token = ApiToken.find_active_by_token(plaintext)
+      return unless api_token
+
+      api_token.touch_last_used
+      Session.new(user: api_token.user)
+    end
+
+    def upload_key_from_request
+      bearer = request.authorization.to_s[/\ABearer\s+(\S+)\z/i, 1]
+      return bearer if bearer&.start_with?(ApiToken::PREFIX)
+
+      request.headers["X-Upload-Key"].to_s.presence
     end
 
     def session_from_doorkeeper
