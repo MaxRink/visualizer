@@ -1,3 +1,12 @@
+# Recurring tasks for Solid Queue. ERB is evaluated by
+# ActiveSupport::ConfigurationFile, so the hosted service and self-hosted
+# installs can share one file.
+#
+# Self-hosted installs (VISUALIZER_SELF_HOSTED=true) have no billing provider,
+# no Airtable credentials and no Loffee Labs catalogue. Scheduling those jobs
+# there only produces failed runs, so they are left out entirely instead of
+# being disabled inside the job classes.
+<% self_hosted = ENV["VISUALIZER_SELF_HOSTED"] == "true" %>
 clear_solid_queue_finished_jobs:
   queue: low
   command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
@@ -11,26 +20,8 @@ unconfirmed_user_cleanup_job:
 fill_autocomplete_values_job:
   class: FillAutocompleteValuesJob
   schedule: "@hourly"
-duplicate_lemon_squeezy_subscriptions_job:
-  class: DuplicateLemonSqueezySubscriptionsJob
-  schedule: "@daily"
-duplicate_creem_subscriptions_job:
-  class: DuplicateCreemSubscriptionsJob
-  schedule: "@daily"
 tag_cleaner_job:
   class: TagCleanerJob
-  schedule: "@daily"
-airtable_webhook_refresh_all_job:
-  class: AirtableWebhookRefreshAllJob
-  schedule: "0 0 */6 * *"
-loffee_labs_importer_job:
-  class: LoffeeLabsImporterJob
-  schedule: "@daily"
-premium_feedback_job:
-  class: PremiumFeedbackJob
-  schedule: "@daily"
-disable_expired_premium_coffee_management_job:
-  class: DisableExpiredPremiumCoffeeManagementJob
   schedule: "@daily"
 populate_dropdown_values_job:
   class: PopulateDropdownValuesJob
@@ -38,3 +29,25 @@ populate_dropdown_values_job:
 trending_profiles_job:
   class: TrendingProfilesJob
   schedule: "@hourly"
+<% unless self_hosted %>
+# Billing: no Creem/Lemon Squeezy webhooks exist on a self-hosted install.
+duplicate_lemon_squeezy_subscriptions_job:
+  class: DuplicateLemonSqueezySubscriptionsJob
+  schedule: "@daily"
+duplicate_creem_subscriptions_job:
+  class: DuplicateCreemSubscriptionsJob
+  schedule: "@daily"
+premium_feedback_job:
+  class: PremiumFeedbackJob
+  schedule: "@daily"
+disable_expired_premium_coffee_management_job:
+  class: DisableExpiredPremiumCoffeeManagementJob
+  schedule: "@daily"
+# Airtable and Loffee Labs are external SaaS integrations with upstream credentials.
+airtable_webhook_refresh_all_job:
+  class: AirtableWebhookRefreshAllJob
+  schedule: "0 0 */6 * *"
+loffee_labs_importer_job:
+  class: LoffeeLabsImporterJob
+  schedule: "@daily"
+<% end %>

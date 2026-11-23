@@ -57,8 +57,13 @@ Rails.application.routes.draw do
 
   get :heartbeat, to: "heartbeat#show"
   get :privacy, to: "home#privacy"
-  post :lemon_squeezy, to: "webhook#lemon_squeezy"
-  post :creem, to: "webhook#creem"
+
+  # Billing providers are a SaaS-only integration; self-hosted installs cannot
+  # have subscriptions, so the webhook endpoints do not exist there.
+  unless ENV["VISUALIZER_SELF_HOSTED"] == "true"
+    post :lemon_squeezy, to: "webhook#lemon_squeezy"
+    post :creem, to: "webhook#creem"
+  end
   post "emails/unsubscribe"
 
   resources :people, only: %i[show] do

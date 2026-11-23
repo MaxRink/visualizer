@@ -1,5 +1,6 @@
 class PremiumController < ApplicationController
   before_action :require_authentication, except: [:index]
+  before_action :reject_self_hosted
 
   def index
     @features = [
@@ -56,5 +57,13 @@ class PremiumController < ApplicationController
   def success
     flash[:notice] = "Subscribing was successful. Thank you for your support! 🙏"
     redirect_to shots_path
+  end
+
+  private
+
+  # Self-hosted installs have no billing provider. The routes stay mounted so
+  # existing links keep resolving, but every action reports the page as absent.
+  def reject_self_hosted
+    head :not_found, content_type: "text/plain" if User.self_hosted?
   end
 end

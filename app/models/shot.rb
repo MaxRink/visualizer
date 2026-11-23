@@ -147,6 +147,7 @@ class Shot < ApplicationRecord
   end
 
   def daily_limit
+    return if User.self_hosted?
     return if user.premium?
     return if self.class.where(user_id:).where(created_at: 24.hours.ago..).count < DAILY_LIMIT
 

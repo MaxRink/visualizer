@@ -159,6 +159,14 @@ class User < ApplicationRecord
     ENV["VISUALIZER_SELF_HOSTED"] == "true"
   end
 
+  def self.airtable_configured?
+    Rails.application.credentials.dig(:airtable, :client_id).present? && Rails.application.credentials.dig(:airtable, :client_secret).present?
+  end
+
+  def self.web_push_configured?
+    Rails.application.credentials.webpush&.public_key.present?
+  end
+
   def wants_fahrenheit?
     temperature_unit == "Fahrenheit"
   end
