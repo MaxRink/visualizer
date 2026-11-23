@@ -7,5 +7,8 @@ Rails.application.config.after_initialize do
   # runtime secrets, so these guards must not fire at image build time.
   next if ENV["SECRET_KEY_BASE_DUMMY"].present?
 
+  # Keys come from ACTIVE_RECORD_ENCRYPTION_* via
+  # active_record_encryption_env.rb, which runs before this initializer's
+  # after_initialize block.
   ApiToken.ensure_encryption_configured!
 end
