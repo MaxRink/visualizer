@@ -16,6 +16,15 @@ module Visualizer
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
 
+    # Rails reads Active Record encryption keys from credentials only, but the
+    # deployment supplies them as environment variables. This must run in the
+    # class body: db:prepare loads ActiveRecord before config/initializers, and
+    # the railtie reads the keys when ActiveRecord itself loads.
+    %w[PRIMARY_KEY DETERMINISTIC_KEY KEY_DERIVATION_SALT].each do |name|
+      value = ENV["ACTIVE_RECORD_ENCRYPTION_#{name}"]
+      config.active_record.encryption.public_send("#{name.downcase}=", value) if value.present?
+    end
+
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
