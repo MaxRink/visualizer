@@ -5,6 +5,10 @@ class ApiToken < ApplicationRecord
 
   # Deterministic encryption keeps the key readable on the profile page while
   # still avoiding plaintext at rest, and allows an indexed lookup by value.
+  # Keys come from ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY, _DETERMINISTIC_KEY and
+  # _KEY_DERIVATION_SALT (or active_record_encryption in credentials);
+  # config/initializers/upload_key_encryption.rb refuses to boot in production
+  # when any of them is missing.
   encrypts :token, deterministic: true
 
   validates :name, presence: true, length: {maximum: 60}
@@ -18,6 +22,28 @@ class ApiToken < ApplicationRecord
     return if plaintext.blank?
 
     active.find_by(token: plaintext)
+  end
+
+  def self.missing_encryption_settings(config = ActiveRecord::Encryption.config)
+    {
+      "primary_key" => config.primary_key,
+      "deterministic_key" => config.deterministic_key,
+      "key_derivation_salt" => config.key_derivation_salt
+    }.select { |_, value| value.blank? }.keys
+  end
+
+  def self.ensure_encryption_configured!(config = ActiveRecord::Encryption.config)
+    missing = missing_encryption_settings(config)
+    return if missing.empty?
+
+    raise <<~MESSAGE
+      Active Record encryption is not configured (missing: #{missing.join(", ")}).
+      Visualizer stores upload keys encrypted and cannot start without it.
+
+      Set ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY, ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY,
+      and ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT, or add active_record_encryption
+      to the Rails credentials.
+    MESSAGE
   end
 
   def revoked?

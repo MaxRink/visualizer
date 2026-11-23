@@ -24,6 +24,27 @@ class ApiTokenTest < ActiveSupport::TestCase
     assert_equal "vzu_abcd************0123", api_token.masked_token
   end
 
+  test "reports missing encryption settings" do
+    assert_empty ApiToken.missing_encryption_settings
+
+    config = Struct.new(:primary_key, :deterministic_key, :key_derivation_salt).new(nil, "deterministic", nil)
+
+    assert_equal %w[primary_key key_derivation_salt], ApiToken.missing_encryption_settings(config)
+  end
+
+  test "raises with the missing setting names when encryption is unconfigured" do
+    config = Struct.new(:primary_key, :deterministic_key, :key_derivation_salt).new(nil, nil, nil)
+
+    error = assert_raises(RuntimeError) { ApiToken.ensure_encryption_configured!(config) }
+
+    assert_includes error.message, "primary_key, deterministic_key, key_derivation_salt"
+    assert_includes error.message, "ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"
+  end
+
+  test "does not raise when encryption is configured" do
+    assert_nil ApiToken.ensure_encryption_configured!
+  end
+
   test "rotating keeps one active token per user" do
     user = create(:user)
     first = user.rotate_upload_key!

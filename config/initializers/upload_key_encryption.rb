@@ -1,0 +1,8 @@
+# Upload keys are stored with Active Record encryption (see ApiToken). Without
+# keys the first token write fails inside a request instead of at deploy time,
+# so production refuses to boot with a message that names what is missing.
+Rails.application.config.after_initialize do
+  next unless Rails.env.production?
+
+  ApiToken.ensure_encryption_configured!
+end
