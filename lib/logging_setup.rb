@@ -23,5 +23,4 @@ module LoggingSetup
   rescue StandardError
     false
   end
-
 end
