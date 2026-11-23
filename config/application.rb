@@ -5,6 +5,7 @@ require_relative "../lib/extensions/ip_addr"
 require_relative "../lib/legacy_multipart_content_type"
 
 require "rails/all"
+require_relative "../app/lib/visualizer_metrics"
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
@@ -36,6 +37,9 @@ module Visualizer
     config.middleware.insert_after ActionDispatch::RemoteIp, CloudflareRemoteIp
     config.middleware.insert_before Rack::MethodOverride, BadRequestMiddleware
     config.middleware.insert_before BadRequestMiddleware, LegacyMultipartContentType
+    if VisualizerMetrics.enabled?
+      config.middleware.insert_after ActionDispatch::Executor, VisualizerMetricsMiddleware
+    end
     config.mission_control.jobs.http_basic_auth_enabled = false
 
     initializer "hotcell.variant_transformer", after: "active_storage.configs" do

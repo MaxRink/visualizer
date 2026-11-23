@@ -22,7 +22,7 @@ Rails.application.configure do
   # config.asset_host = "http://assets.example.com"
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
-  config.active_storage.service = :r2
+  config.active_storage.service = ENV.fetch("ACTIVE_STORAGE_SERVICE", "r2").to_sym
 
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
   config.assume_ssl = true
@@ -57,10 +57,25 @@ Rails.application.configure do
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
   # config.action_mailer.raise_delivery_errors = false
 
-  config.action_mailer.default_url_options = {host: "visualizer.coffee", protocol: "https"}
+  config.action_mailer.default_url_options = {host: ENV.fetch("APP_HOST", "visualizer.coffee"), protocol: ENV.fetch("APP_PROTOCOL", "https")}
   config.action_mailer.raise_delivery_errors = true
-  config.action_mailer.delivery_method = :postmark
-  config.action_mailer.postmark_settings = {api_token: Rails.application.credentials.postmark&.api_token}
+  if ENV["SMTP_ADDRESS"].present?
+    config.action_mailer.delivery_method = :smtp
+    smtp_tls = %w[1 true yes].include?(ENV.fetch("SMTP_TLS", "false").downcase)
+    config.action_mailer.smtp_settings = {
+      address: ENV.fetch("SMTP_ADDRESS"),
+      port: ENV.fetch("SMTP_PORT", "587"),
+      domain: ENV.fetch("SMTP_DOMAIN", ENV.fetch("APP_HOST", "localhost")),
+      user_name: ENV["SMTP_USERNAME"],
+      password: ENV["SMTP_PASSWORD"],
+      authentication: :plain,
+      ssl: smtp_tls,
+      enable_starttls_auto: !smtp_tls
+    }
+  else
+    config.action_mailer.delivery_method = :postmark
+    config.action_mailer.postmark_settings = {api_token: Rails.application.credentials.postmark&.api_token}
+  end
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).
@@ -83,5 +98,5 @@ Rails.application.configure do
   # Skip DNS rebinding protection for the default health check endpoint.
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 
-  config.webauthn_origin = "https://visualizer.coffee"
+  config.webauthn_origin = "#{ENV.fetch("APP_PROTOCOL", "https")}://#{ENV.fetch("APP_HOST", "visualizer.coffee")}"
 end

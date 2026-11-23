@@ -71,6 +71,8 @@ module Authentication
   end
 
   def tag_request
-    Appsignal.add_tags(email: Current.user&.email, user_id: Current.user&.id, remote_ip: request.remote_ip, cloudflare_ip: request.headers["CF-Connecting-IP"], hetzner_lb: request.headers["X-Forwarded-For"])
+    # AppSignal already records request timing and routing context. Avoid
+    # exporting email addresses and proxy/client IPs as custom tags.
+    Appsignal.add_tags
   end
 end

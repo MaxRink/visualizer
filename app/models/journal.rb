@@ -45,6 +45,7 @@ class Journal
     labels["private_notes"] = "Private notes"
     user.shot_metadata_fields.each { labels["metadata:#{it}"] = it.humanize }
     Shot::TASTING_ASSESSMENT_ATTRIBUTES.each { labels[it.to_s] = it.to_s.humanize }
+    labels["grind_suggestion"] = "Grind suggestion" if user.admin?
     @columns = labels
   end
 
@@ -57,7 +58,7 @@ class Journal
   end
 
   def editable_columns
-    @editable_columns ||= columns.except("actions", "ratio", "image", "start_time")
+    @editable_columns ||= columns.except("actions", "ratio", "image", "start_time", "grind_suggestion")
   end
 
   def dropdown_values(field)
@@ -136,6 +137,8 @@ class Journal
       date ? "#{label} (#{date.to_fs(:long)})".strip : label
     elsif field == "tag_list"
       shot.tag_list
+    elsif field == "grind_suggestion"
+      shot.grind_suggestion.to_h["label"]
     else
       shot[field]
     end

@@ -5,8 +5,8 @@
 ARG RUBY_VERSION
 FROM docker.io/rubylang/ruby:${RUBY_VERSION:?}-resolute AS base
 
-LABEL org.opencontainers.image.source=https://github.com/miharekar/visualizer
-LABEL org.opencontainers.image.licenses=MIT
+LABEL org.opencontainers.image.source=https://github.com/MaxRink/visualizer \
+  org.opencontainers.image.licenses=MIT
 
 # Rails app lives here
 WORKDIR /rails
@@ -44,12 +44,20 @@ RUN apt-get update -qq && \
 COPY vendor/* ./vendor/
 COPY Gemfile Gemfile.lock ./
 
-RUN bundle install && \
+# Ruby 4's Bundler resolves the platform-specific native gems during image builds.
+# Keep the committed lockfile as the source of versions while allowing that
+# platform resolution in the amd64 image.
+RUN BUNDLE_FROZEN=false bundle install && \
   rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
   bundle exec bootsnap precompile --gemfile
 
 # Copy application code
 COPY . .
+
+# Self-hosted builds do not contain upstream commercial credentials.  The
+# empty Rails credentials file keeps optional credential lookups safe; all
+# integrations use explicit runtime environment variables instead.
+RUN bundle exec ruby script/generate_self_hosted_credentials.rb
 
 # Precompile bootsnap code for faster boot times.
 RUN bundle exec bootsnap precompile app/ lib/
@@ -59,6 +67,11 @@ RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
 
 # Final stage for app image
 FROM base
+
+ARG COMMIT=dev
+ARG BUILD_TIME=dev
+LABEL org.opencontainers.image.revision=${COMMIT} \
+  org.opencontainers.image.created=${BUILD_TIME}
 
 # Run and own only the runtime files as a non-root user for security
 RUN userdel -r ubuntu && \

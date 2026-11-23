@@ -33,6 +33,9 @@ Rails.application.routes.draw do
 
   get "auth/airtable/callback", to: "omniauth_callbacks#airtable"
   get "auth/airtable", as: :connect_airtable
+  get "auth/homelab_oidc/callback", as: :homelab_oidc_callback, to: "omniauth_callbacks#homelab_oidc"
+  get "auth/homelab_oidc", to: "omniauth_callbacks#homelab_oidc_method_not_allowed"
+  post "auth/homelab_oidc", as: :sign_in_with_homelab_oidc
   get "auth/failure", to: "sessions#omniauth_failure"
 
   namespace :api do
@@ -67,6 +70,7 @@ Rails.application.routes.draw do
   end
 
   resources :shots do
+    resource :grind_suggestion, only: :create, module: :shots
     member do
       delete :remove_image
       get :share
@@ -79,6 +83,7 @@ Rails.application.routes.draw do
   end
 
   resources :coffee_bags, except: [:show] do
+    resource :grind_suggestion, only: :create, module: :coffee_bags
     member do
       delete :remove_image
       post :archive

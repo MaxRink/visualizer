@@ -19,11 +19,14 @@ gem "lexxy"
 gem "memo_wise"
 gem "mission_control-jobs"
 gem "omniauth-airtable"
+gem "omniauth_openid_connect", "~> 0.8"
 gem "omniauth-rails_csrf_protection"
 gem "pg"
 gem "pghero"
 gem "pg_lock"
 gem "postmark-rails"
+gem "prometheus_exporter", "0.4.13"
+gem "webrick", "~> 1.9"
 gem "propshaft"
 gem "inline_svg" # rubocop:disable Bundler/OrderedGems
 gem "puma"
@@ -72,3 +75,9 @@ group :test do
   gem "retest"
   gem "webmock"
 end
+
+gem "opentelemetry-sdk", "~> 1.13"
+
+gem "opentelemetry-instrumentation-rails", "~> 0.42.0"
+
+gem "opentelemetry-exporter-otlp", "~> 0.37.0"
