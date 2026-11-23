@@ -9,6 +9,22 @@ class ShotTest < ActiveSupport::TestCase
     end
   end
 
+  test "self-hosted mode ignores the daily shot limit" do
+    user = create(:user)
+    create_list(:shot, Shot::DAILY_LIMIT, user:)
+    shot = build(:shot, user:)
+
+    assert_not shot.valid?
+
+    previous = ENV["VISUALIZER_SELF_HOSTED"]
+    ENV["VISUALIZER_SELF_HOSTED"] = "true"
+    begin
+      assert shot.valid?
+    ensure
+      ENV["VISUALIZER_SELF_HOSTED"] = previous
+    end
+  end
+
   test "sends shot uploaded email when user opted in" do
     user = create(:user, :premium, unsubscribed_from: [])
 

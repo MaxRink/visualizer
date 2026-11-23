@@ -25,7 +25,51 @@ class ProfilesControllerTest < ActionDispatch::IntegrationTest
     assert_saved_avatar_rendered
   end
 
+  test "hides the Airtable connect button when credentials are missing" do
+    sign_in(create(:user, :premium))
+
+    get edit_profile_url
+
+    assert_response :success
+    assert_not_includes response.body, "Connect Airtable"
+  end
+
+  test "shows the Airtable connect button when credentials are configured" do
+    sign_in(create(:user, :premium))
+
+    stubbing(User, :airtable_configured?, true) do
+      get edit_profile_url
+    end
+
+    assert_response :success
+    assert_includes response.body, "Connect Airtable"
+  end
+
+  test "hides push notifications when VAPID keys are missing" do
+    get edit_profile_url
+
+    assert_response :success
+    assert_not_includes response.body, "push-notifications"
+  end
+
+  test "shows push notifications when VAPID keys are configured" do
+    stubbing(User, :web_push_configured?, true) do
+      get edit_profile_url
+    end
+
+    assert_response :success
+    assert_includes response.body, "push-notifications"
+  end
+
   private
+
+  def stubbing(receiver, method_name, value)
+    original = receiver.method(method_name)
+    receiver.define_singleton_method(method_name) { value }
+    yield
+  ensure
+    receiver.define_singleton_method(method_name, original)
+  end
 
   def invalid_params
     {user: {avatar: png_upload, public: "1", name: "", email_notifications: [""]}}
