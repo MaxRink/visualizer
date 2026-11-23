@@ -42,3 +42,4 @@
 /snippets.rb
 /docs/*
 !/docs/API.md
+!/docs/UPSTREAM.md
