@@ -6,7 +6,11 @@ class ProfilesController < ApplicationController
   def edit; end
 
   def update
-    if @profile.update(profile_params)
+    attributes = profile_params
+    token = attributes[:upstream_api_token]
+    attributes = attributes.except(:upstream_api_token) if token.blank?
+
+    if @profile.update(attributes)
       flash[:notice] = "Profile successfully updated."
       redirect_to shots_path(format: :html)
     else
@@ -15,6 +19,22 @@ class ProfilesController < ApplicationController
         it.html { render :edit }
       end
     end
+  end
+
+  def test_upstream_push
+    result = UpstreamPush.test(@profile)
+
+    if result == true
+      @profile.update!(upstream_push_checked_at: Time.current)
+      redirect_to edit_profile_path, notice: "Upstream accepted the token."
+    else
+      redirect_to edit_profile_path, alert: "Upstream rejected the token (#{result})."
+    end
+  end
+
+  def clear_upstream_token
+    @profile.update!(upstream_api_token: nil, upstream_push_enabled: false)
+    redirect_to edit_profile_path, notice: "Upstream token cleared and mirroring disabled."
   end
 
   def reset_chart_settings
@@ -51,6 +71,8 @@ class ProfilesController < ApplicationController
     @upload_keys = Current.user.upload_keys
     @shot_count = Current.user.shots.count
     @storage_bytes = UserStorage.new(Current.user).bytes
+    @upstream_last_push = Current.user.shots.maximum(:upstream_pushed_at)
+    @upstream_last_error = Current.user.shots.where.not(upstream_push_error: nil).order(updated_at: :desc).pick(:upstream_push_error)
   end
 
   def set_authorized_applications
@@ -59,6 +81,7 @@ class ProfilesController < ApplicationController
 
   def profile_params
     allowed_params = %i[avatar name timezone temperature_unit date_format skin public hide_shot_times beta unified_chart]
+    allowed_params += %i[upstream_push_enabled upstream_base_url upstream_api_token]
     allowed_params << %i[github supporter developer] if Current.user.admin?
     allowed_params << %i[coffee_management_enabled journal_enabled] if Current.user.premium?
     notification_settings = {unsubscribed_from: User::EMAIL_NOTIFICATIONS - (params[:user][:email_notifications] || [])}

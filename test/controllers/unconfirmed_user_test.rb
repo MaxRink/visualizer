@@ -51,7 +51,7 @@ class UnconfirmedUserTest < ActionDispatch::IntegrationTest
     @user.update!(unsubscribed_from: [])
 
     assert_no_emails do
-      UserMailer.with(user: @user).newsletter.deliver_now
+      UserMailer.with(user: @user).cancelled_premium.deliver_now
     end
 
     assert_emails 1 do

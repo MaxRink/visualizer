@@ -1,4 +1,4 @@
-<% content_for(:html_title) { "Visualizer | #{@user.display_name}" } %>
+<% content_for(:html_title) { "#{Instance.name} | #{@user.display_name}" } %>
 <% content_for(:head) { auto_discovery_link_tag :rss, feed_person_url(@user, format: :rss) } %>
 <%= render "shared/premium_banner", count: @premium_count %>
 <div class="bg-white shadow dark:bg-neutral-900">

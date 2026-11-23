@@ -75,7 +75,7 @@ class ShotInformation
 
         csv << ["meta", nil, nil, nil, nil, nil, nil, nil, nil, "Attribution", "Visualizer", nil]
         csv << ["meta", nil, nil, nil, nil, nil, nil, nil, nil, "Software", "Visualizer", nil]
-        csv << ["meta", nil, nil, nil, nil, nil, nil, nil, nil, "Url", "https://visualizer.coffee/shots/#{shot.id}", nil]
+        csv << ["meta", nil, nil, nil, nil, nil, nil, nil, nil, "Url", "#{Instance.url}/shots/#{shot.id}", nil]
         csv << ["meta", nil, nil, nil, nil, nil, nil, nil, nil, "Export version", "1.0.0", nil]
 
         timeframe.each.with_index do |time, i|

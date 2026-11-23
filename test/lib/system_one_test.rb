@@ -71,6 +71,6 @@ class SystemOneTest < ActiveSupport::TestCase
   private
 
   def client(api_endpoint: ENDPOINT)
-    SystemOne.new(api_endpoint: api_endpoint, model: "coffee-bag-vision", api_key: "synthetic-key")
+    SystemOne.new(api_endpoint:, model: "coffee-bag-vision", api_key: "synthetic-key")
   end
 end

@@ -130,6 +130,8 @@ Rails.application.routes.draw do
 
   resource :profile, only: %i[edit update] do
     resources :upload_keys, only: %i[create destroy]
+    post :test_upstream_push
+    delete :clear_upstream_token
     delete :disconnect_oidc
     resource :journal_columns, only: :update
     get :reset_chart_settings

@@ -1,6 +1,4 @@
 class WebPushJob < ApplicationJob
-  CONTACT_EMAIL = "mailto:info@visualizer.coffee".freeze
-
   queue_as :default
   rescue_from(WebPush::TooManyRequests, WebPush::PushServiceError) { retry_transient_failure }
 
@@ -13,7 +11,7 @@ class WebPushJob < ApplicationJob
       p256dh: push_subscription.p256dh_key,
       auth: push_subscription.auth_key,
       vapid: {
-        subject: CONTACT_EMAIL,
+        subject: Instance.url,
         public_key: Rails.application.credentials.webpush.public_key,
         private_key: Rails.application.credentials.webpush.private_key
       },

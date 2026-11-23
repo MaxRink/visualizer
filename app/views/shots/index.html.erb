@@ -1,7 +1,6 @@
 <% content_for(:html_title) { "Visualizer | Your Shots" } %>
 <% turbo_refreshes_with method: :morph, scroll: :preserve %>
 <%= render "shared/premium_banner", count: @premium_count %>
-<%= render "shared/migration_banner" %>
 <%= render "shared/pull_refresh" %>
 <div class="mx-auto flex max-w-7xl flex-col sm:px-6 lg:px-8" data-controller="panel upload-drop" data-upload-drop-upload-outlet="#shot-upload-form">
   <%= render "upload_overlay" %>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_24_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_24_140100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "dblink"
   enable_extension "pg_catalog.plpgsql"
@@ -328,6 +328,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_24_120000) do
     t.integer "bitterness"
     t.jsonb "grind_suggestion"
     t.uuid "api_token_id"
+    t.datetime "upstream_pushed_at"
+    t.string "upstream_shot_id"
+    t.text "upstream_push_error"
     t.index ["airtable_id"], name: "index_shots_on_airtable_id"
     t.index ["api_token_id"], name: "index_shots_on_api_token_id"
     t.index ["bean_brand"], name: "index_shots_on_bean_brand", opclass: :gin_trgm_ops, using: :gin
@@ -389,6 +392,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_24_120000) do
     t.datetime "disabled_at"
     t.datetime "confirmed_at"
     t.boolean "oidc_provisioned", default: false, null: false
+    t.boolean "upstream_push_enabled", default: false, null: false
+    t.string "upstream_api_token"
+    t.string "upstream_base_url", default: "https://visualizer.coffee"
+    t.datetime "upstream_push_checked_at"
     t.index ["creem_customer_id"], name: "index_users_on_creem_customer_id", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["lemon_squeezy_customer_id"], name: "index_users_on_lemon_squeezy_customer_id", unique: true

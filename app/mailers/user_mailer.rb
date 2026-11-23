@@ -1,11 +1,4 @@
 class UserMailer < ApplicationMailer
-  def yearly_brew
-    @user = params[:user]
-    @yearly_brew = YearlyBrew.new(@user, 2024)
-
-    mail to: @user.email, subject: "Bean Counting 2024: Your Year on Visualizer"
-  end
-
   def shot_uploaded
     @user = params[:user]
     @shot = params[:shot]
@@ -13,40 +6,19 @@ class UserMailer < ApplicationMailer
     mail to: @user.email, subject: "See your new #{@shot.profile_title} shot 👀"
   end
 
-  def newsletter
-    @user = params[:user]
-    mail to: @user.email, subject: "Is this Visualizer v5?"
-  end
-
-  def black_friday
-    @user = params[:user]
-    mail to: @user.email, subject: "A Different Kind of Black Friday on Visualizer"
-  end
-
   def cancelled_premium
     @user = params[:user]
-    mail to: @user.email, subject: "Visualizer Premium Feedback"
-  end
-
-  def oauth_pkce
-    @user = params[:user]
-    @applications = @user.oauth_applications.order(:name)
-    mail to: @user.email, subject: "PKCE support for your Visualizer OAuth app"
+    mail to: @user.email, subject: "#{Instance.name}: subscription feedback"
   end
 
   def airtable_base_full
     @user = params[:user]
-    mail to: @user.email, subject: "Your Airtable base is full"
-  end
-
-  def upcoming_renewal
-    @user = params[:user]
-    mail to: @user.email, subject: "Quick heads-up before your renewal"
+    mail to: @user.email, subject: "#{Instance.name}: your Airtable base is full"
   end
 
   def oidc_link
     @user = params[:user]
     @token = params[:token]
-    mail to: @user.email, subject: "Finish connecting OpenID Connect to Visualizer"
+    mail to: @user.email, subject: "Finish connecting OpenID Connect to #{Instance.name}"
   end
 end

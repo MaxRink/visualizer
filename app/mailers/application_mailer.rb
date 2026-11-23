@@ -1,9 +1,9 @@
 class ApplicationMailer < ActionMailer::Base
-  MAIL_FROM = ENV.fetch("SMTP_FROM", ENV["VISUALIZER_SELF_HOSTED"] == "true" ? "auth@private-testumgebung.de" : "miha@visualizer.coffee")
+  MAIL_FROM = ENV.fetch("SMTP_FROM") { "no-reply@#{Instance.host}" }
 
   before_action :check_notification
 
-  default from: email_address_with_name(MAIL_FROM, "Miha from Visualizer"), message_stream: -> { notification_exists? ? "broadcast" : "outbound" }
+  default from: email_address_with_name(MAIL_FROM, Instance.name), message_stream: -> { notification_exists? ? "broadcast" : "outbound" }
   layout "mailer"
   helper_method :notification_exists?
 

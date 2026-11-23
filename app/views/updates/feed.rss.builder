@@ -1,8 +1,8 @@
 xml.instruct! :xml, version: "1.0"
 xml.rss version: "2.0", "xmlns:content" => "http://purl.org/rss/1.0/modules/content/", "xmlns:atom" => "http://www.w3.org/2005/Atom" do
   xml.channel do
-    xml.title "Visualizer Updates"
-    xml.description "These are the latest updates from Visualizer"
+    xml.title "#{Instance.name} Updates"
+    xml.description "These are the latest updates from #{Instance.name}"
     xml.link updates_url
     xml.lastBuildDate @updates.first.published_at.rfc822 if @updates.present?
     xml.tag! "atom:link", href: feed_updates_url(format: "rss"), rel: "self", type: "application/rss+xml"

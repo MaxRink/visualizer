@@ -14,6 +14,8 @@ module Admin
       @shot_counts = Shot.where(user_id: ids).group(:user_id).count
       @last_signed_in_at = Session.where(user_id: ids).group(:user_id).maximum(:created_at)
       @upload_key_counts = ApiToken.active.where(user_id: ids).group(:user_id).count
+      @upstream_last_push = Shot.where(user_id: ids).where.not(upstream_pushed_at: nil).group(:user_id).maximum(:upstream_pushed_at)
+      @upstream_errors = Shot.where(user_id: ids).where.not(upstream_push_error: nil).group(:user_id).count
     end
 
     def promote

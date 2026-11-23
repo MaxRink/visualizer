@@ -30,6 +30,8 @@ class User < ApplicationRecord
   has_many :dropdown_values, dependent: :destroy
   has_many :api_tokens, dependent: :destroy
 
+  encrypts :upstream_api_token
+
   has_one_attached :avatar do |attachable|
     attachable.variant :thumb, resize_to_limit: [96, 96], format: :jpeg, saver: {strip: true}
   end
@@ -188,6 +190,10 @@ class User < ApplicationRecord
 
   def can_manage_premium?
     creem_customer_id.present? || lemon_squeezy_customer_id.present?
+  end
+
+  def upstream_configured?
+    upstream_push_enabled? && upstream_api_token.present?
   end
 
   def upload_keys

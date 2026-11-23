@@ -15,10 +15,7 @@ class ShotsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_acceptable
     assert_equal "application/json", response.media_type
-    assert_equal({
-      "error" => "This is not an API endpoint.",
-      "api_docs" => "https://apidocs.visualizer.coffee"
-    }, response.parsed_body)
+    assert_equal({"error" => "This is not an API endpoint."}, response.parsed_body)
   end
 
   test "index renders Turbo Stream pagination" do
@@ -34,10 +31,7 @@ class ShotsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_acceptable
     assert_equal "application/json", response.media_type
-    assert_equal({
-      "error" => "This is not an API endpoint.",
-      "api_docs" => "https://apidocs.visualizer.coffee"
-    }, response.parsed_body)
+    assert_equal({"error" => "This is not an API endpoint."}, response.parsed_body)
   end
 
   test "show accepts wildcard format" do

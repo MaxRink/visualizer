@@ -13,7 +13,7 @@ class DisabledUserTest < ActionDispatch::IntegrationTest
 
     assert_response :forbidden
     assert_includes response.body, "Your account has been disabled"
-    assert_includes response.body, "miha@visualizer.coffee"
+    assert_includes response.body, "contact whoever runs this instance"
 
     delete session_url
     assert_redirected_to new_session_url
@@ -84,7 +84,7 @@ class DisabledUserTest < ActionDispatch::IntegrationTest
     @user.update!(unsubscribed_from: [])
 
     assert_no_emails do
-      UserMailer.with(user: @user).newsletter.deliver_now
+      UserMailer.with(user: @user).cancelled_premium.deliver_now
       UserMailer.with(user: @user).cancelled_premium.deliver_now
     end
   end
