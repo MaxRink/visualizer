@@ -2,6 +2,7 @@ class ApiToken < ApplicationRecord
   PREFIX = "vzu_".freeze
 
   belongs_to :user
+  has_many :shots, dependent: :nullify
 
   # Deterministic encryption keeps the key readable on the profile page while
   # still avoiding plaintext at rest, and allows an indexed lookup by value.

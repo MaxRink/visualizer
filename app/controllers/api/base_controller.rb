@@ -34,6 +34,7 @@ module Api
       return unless api_token
 
       api_token.touch_last_used
+      Current.api_token = api_token
       Session.new(user: api_token.user)
     end
 

@@ -87,6 +87,54 @@ module Api
       assert_nil shot.reload.coffee_bag_id
     end
 
+    test "records the key that uploaded a shot" do
+      other = create(:api_token, user: @user, name: "Other")
+      file = JSON.parse(Rails.root.join("test/files/beanconqueror.json").read)
+
+      post upload_api_shots_url, headers: {"Authorization" => "Bearer #{other.token}"}, params: file, as: :json
+
+      assert_response :success
+      assert_equal other, Shot.find(response.parsed_body["id"]).api_token
+    end
+
+    test "records the key when a bag link comes through the API" do
+      shot = create(:shot, user: @user)
+      bag = create(:coffee_bag, roaster: create(:roaster, user: @user))
+
+      patch api_shot_url(shot), headers: {"Authorization" => "Bearer #{@api_token.token}"}, params: {shot: {coffee_bag_id: bag.id}}, as: :json
+
+      assert_equal @api_token, shot.reload.api_token
+    end
+
+    test "does not attribute a plain metadata update" do
+      shot = create(:shot, user: @user)
+
+      patch api_shot_url(shot), headers: {"Authorization" => "Bearer #{@api_token.token}"}, params: {shot: {barista: "Sam"}}, as: :json
+
+      assert_nil shot.reload.api_token_id
+    end
+
+    test "deleting a key nullifies the attribution but keeps the shot" do
+      shot = create(:shot, user: @user, api_token: @api_token)
+
+      @api_token.destroy!
+
+      assert_nil shot.reload.api_token_id
+      assert Shot.exists?(shot.id)
+    end
+
+    test "a browser upload has no key attribution" do
+      browser_user = create(:user)
+      sign_in(browser_user)
+
+      post shots_url, params: {files: [fixture_file_upload(Rails.root.join("test/files/beanconqueror.json"), "application/json")]}
+
+      assert_response :redirect
+      shot = Shot.order(:created_at).last
+      assert_equal browser_user, shot.user
+      assert_nil shot.api_token_id
+    end
+
     test "does not create a persisted session or set a session cookie" do
       assert_no_difference "Session.count" do
         get api_me_url, headers: {"Authorization" => "Bearer #{@api_token.token}"}, as: :json

@@ -1,5 +1,5 @@
 class Current < ActiveSupport::CurrentAttributes
-  attribute :session, :timezone
+  attribute :session, :timezone, :api_token
   delegate :user, to: :session, allow_nil: true
 
   resets { Time.zone = nil }

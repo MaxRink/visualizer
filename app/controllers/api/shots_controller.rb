@@ -65,6 +65,7 @@ module Api
 
     def upload
       shot = Shot.from_file(Current.user, @file_content)
+      shot.api_token = Current.api_token
       if shot.save
         render json: {id: shot.id}
       else
@@ -77,6 +78,7 @@ module Api
     def update
       raise ActionController::UnknownFormat unless request.format.json?
 
+      @shot.api_token = Current.api_token if upload_key_attribution?
       saved = false
       Shot.transaction(requires_new: true) do
         saved = @shot.update(update_shot_params)
@@ -129,6 +131,12 @@ module Api
 
     def ignore_token_without_read_scope
       Current.session = nil if doorkeeper_token && !doorkeeper_token.includes_scope?("read")
+    end
+
+    # Only bag links and image uploads are attributed to the key; a plain
+    # metadata edit through the key does not claim the shot.
+    def upload_key_attribution?
+      Current.api_token.present? && (params.dig(:shot, :coffee_bag_id).present? || params.dig(:shot, :image).present?)
     end
 
     def load_users_shot
