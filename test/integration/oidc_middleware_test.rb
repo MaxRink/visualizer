@@ -60,7 +60,7 @@ class OidcMiddlewareTest < ActiveSupport::TestCase
       headers: {"Content-Type" => "application/json"}
     )
 
-    get "/auth/test_oidc/callback", code: "authorization-code", state: state
+    get("/auth/test_oidc/callback", code: "authorization-code", state:)
 
     assert_equal 302, last_response.status
     assert_requested :post, TOKEN_ENDPOINT
@@ -115,7 +115,7 @@ class OidcMiddlewareTest < ActiveSupport::TestCase
       iss: issuer,
       sub: "subject-1",
       aud: "test-client",
-      nonce: nonce,
+      nonce:,
       iat: Time.now.to_i,
       exp: 5.minutes.from_now.to_i,
       email: "user@example.test",
@@ -124,7 +124,7 @@ class OidcMiddlewareTest < ActiveSupport::TestCase
     id_token = JSON::JWT.new(claims).sign(JSON::JWK.new(signing_key).merge("kid" => "test-key"), :RS256).to_s
     stub_request(:post, TOKEN_ENDPOINT).to_return(
       status: 200,
-      body: {access_token: "access-token", token_type: "Bearer", id_token: id_token}.to_json,
+      body: {access_token: "access-token", token_type: "Bearer", id_token:}.to_json,
       headers: {"Content-Type" => "application/json"}
     )
   end

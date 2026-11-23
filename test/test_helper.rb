@@ -45,5 +45,5 @@ module SystemOneTestSupport
   end
 end
 
-ActiveSupport::TestCase.include(SystemOneTestSupport)
-ActionDispatch::IntegrationTest.include(SystemOneTestSupport)
+ActiveSupport.on_load(:active_support_test_case) { include SystemOneTestSupport }
+ActiveSupport.on_load(:action_dispatch_integration_test) { include SystemOneTestSupport }

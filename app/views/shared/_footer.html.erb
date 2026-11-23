@@ -3,16 +3,13 @@
     <div>
       <div class="flex justify-center whitespace-nowrap sm:justify-between lg:hidden">
         <span>
-          © <%= Date.today.year %>
-          <a class="standard-link hover:text-neutral-700 dark:hover:text-neutral-300" href="https://mr.si/" target="_blank">Miha Rekar</a>
-        </span>
+          © <%= Date.today.year %> <%= Instance.name %>
+          </span>
         <a class="standard-link hidden whitespace-nowrap hover:text-neutral-700 sm:inline dark:hover:text-neutral-300" href="/privacy">Privacy Policy</a>
       </div>
       <div class="hidden justify-between whitespace-nowrap lg:flex">
         <span>
-          © <%= Date.today.year %>
-          <a class="standard-link hover:text-neutral-700 dark:hover:text-neutral-300" href="https://mr.si/" target="_blank">Miha Rekar</a>.
-          Suggestions are welcomed on <a class="standard-link hover:text-neutral-700 dark:hover:text-neutral-300" href="https://github.com/miharekar/visualizer" target="_blank">GitHub</a>.
+          © <%= Date.today.year %> <%= Instance.name %>
         </span>
         <span class="flex items-center gap-4">
           <button type="button" class="standard-link cursor-pointer whitespace-nowrap hover:text-neutral-700 dark:hover:text-neutral-300" data-controller="theme" data-theme-signed-in-value="<%= Current.user.present? %>" data-action="click->theme#toggle">Toggle theme</button>

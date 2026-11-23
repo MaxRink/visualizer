@@ -57,7 +57,7 @@ Rails.application.configure do
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
   # config.action_mailer.raise_delivery_errors = false
 
-  config.action_mailer.default_url_options = {host: ENV.fetch("APP_HOST", "visualizer.coffee"), protocol: ENV.fetch("APP_PROTOCOL", "https")}
+  config.action_mailer.default_url_options = {host: ENV.fetch("APP_HOST", "localhost"), protocol: ENV.fetch("APP_PROTOCOL", "https")}
   config.action_mailer.raise_delivery_errors = true
   if ENV["SMTP_ADDRESS"].present?
     config.action_mailer.delivery_method = :smtp
@@ -98,5 +98,5 @@ Rails.application.configure do
   # Skip DNS rebinding protection for the default health check endpoint.
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 
-  config.webauthn_origin = "#{ENV.fetch("APP_PROTOCOL", "https")}://#{ENV.fetch("APP_HOST", "visualizer.coffee")}"
+  config.webauthn_origin = "#{ENV.fetch("APP_PROTOCOL", "https")}://#{ENV.fetch("APP_HOST", "localhost")}"
 end

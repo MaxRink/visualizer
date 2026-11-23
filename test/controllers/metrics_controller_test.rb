@@ -92,7 +92,7 @@ class MetricsControllerTest < ActiveSupport::TestCase
     previous_host = ENV["PROMETHEUS_EXPORTER_HOST"]
     ENV.delete("PROMETHEUS_EXPORTER_HOST")
 
-    refute VisualizerMetrics.enabled?
+    assert_not VisualizerMetrics.enabled?
   ensure
     ENV["PROMETHEUS_EXPORTER_HOST"] = previous_host
   end

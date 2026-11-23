@@ -5,6 +5,29 @@ module Instance
 
   module_function
 
+  def name
+    ENV.fetch("APP_NAME", "Visualizer")
+  end
+
+  # Never a hard-coded upstream host: APP_URL wins, otherwise the configured
+  # default URL options for this deployment.
+  def url
+    ENV["APP_URL"].presence || configured_url.presence || "http://localhost:3000"
+  end
+
+  def host
+    URI.parse(url).host.presence || "localhost"
+  rescue URI::InvalidURIError
+    "localhost"
+  end
+
+  def configured_url
+    options = Rails.application.config.action_mailer.default_url_options || {}
+    return if options[:host].blank?
+
+    "#{options[:protocol] || "https"}://#{options[:host]}"
+  end
+
   def fork?
     true
   end

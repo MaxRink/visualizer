@@ -21,6 +21,7 @@
           <th class="py-3 pr-4">Last sign-in</th>
           <th class="py-3 pr-4 text-right">Shots</th>
           <th class="py-3 pr-4">Upload key</th>
+          <th class="py-3 pr-4">Upstream</th>
           <th class="py-3">Actions</th>
         </tr>
       </thead>
@@ -47,6 +48,13 @@
             </td>
             <td class="py-3 pr-4 text-right text-neutral-700 dark:text-neutral-300"><%= @shot_counts.fetch(user.id, 0) %></td>
             <td class="py-3 pr-4 text-neutral-700 dark:text-neutral-300"><%= @upload_key_counts.fetch(user.id, 0).zero? ? "—" : @upload_key_counts.fetch(user.id) %></td>
+            <td class="py-3 pr-4 text-neutral-700 dark:text-neutral-300">
+              <% if user.upstream_push_enabled? %>
+                <%= @upstream_errors.fetch(user.id, 0).positive? ? "error" : (@upstream_last_push[user.id] ? time_ago_in_words(@upstream_last_push[user.id]) + " ago" : "enabled") %>
+              <% else %>
+                —
+              <% end %>
+            </td>
             <td class="py-3">
               <div class="flex flex-wrap items-center gap-2">
                 <% if user.admin? %>

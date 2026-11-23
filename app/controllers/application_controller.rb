@@ -30,7 +30,7 @@ class ApplicationController < ActionController::Base
   end
 
   def render_api_endpoint_error
-    render json: {error: "This is not an API endpoint.", api_docs: "https://apidocs.visualizer.coffee"}, status: :not_acceptable
+    render json: {error: "This is not an API endpoint."}, status: :not_acceptable
   end
 
   def set_timezone

@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full has-[>body.overscroll-y-none]:overscroll-y-none" data-environment="<%= Rails.env %>" data-skin="<%= @skin %>">
   <head>
-    <title><%= content_for?(:html_title) ? yield(:html_title) : "Visualizer" %></title>
+    <title><%= content_for?(:html_title) ? yield(:html_title) : Instance.name %></title>
     <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="<%= Instance.name %>">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="color-scheme" content="light dark">
     <meta name="supported-color-schemes" content="light dark">

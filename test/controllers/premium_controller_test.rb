@@ -10,10 +10,7 @@ class PremiumControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_acceptable
     assert_equal "application/json", response.media_type
-    assert_equal({
-      "error" => "This is not an API endpoint.",
-      "api_docs" => "https://apidocs.visualizer.coffee"
-    }, response.parsed_body)
+    assert_equal({"error" => "This is not an API endpoint."}, response.parsed_body)
   end
 
   test "index renders HTML with wildcard accept" do
@@ -21,7 +18,7 @@ class PremiumControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal "text/html", response.media_type
-    assert_includes response.body, "Access your complete shot history"
+    assert_includes response.body, "Everything is included"
   end
 
   test "billing pages are not found when self-hosted" do

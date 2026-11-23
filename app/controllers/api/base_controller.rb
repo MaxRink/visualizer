@@ -30,6 +30,10 @@ module Api
       plaintext = upload_key_from_request
       return if plaintext.blank?
 
+      session_from_api_token(plaintext)
+    end
+
+    def session_from_api_token(plaintext)
       api_token = ApiToken.find_active_by_token(plaintext)
       return unless api_token
 
@@ -54,6 +58,9 @@ module Api
 
     def session_from_basic
       authenticate_with_http_basic do |email, password|
+        # Upload keys work as Basic passwords; the username is ignored entirely.
+        next session_from_api_token(password) if password.to_s.start_with?(ApiToken::PREFIX)
+
         user = basic_auth_user(email, password)
         next unless user
 
@@ -88,11 +95,11 @@ module Api
     end
 
     def render_disabled_user
-      render json: {error: "This account has been disabled. Contact miha@visualizer.coffee for more information."}, status: :forbidden
+      render json: {error: "This account has been disabled. Contact whoever runs this instance."}, status: :forbidden
     end
 
     def render_unconfirmed_user
-      render json: {error: "Confirm your email address first. Sign in at visualizer.coffee to resend the confirmation email."}, status: :forbidden
+      render json: {error: "Confirm your email address first. Sign in to resend the confirmation email."}, status: :forbidden
     end
 
     def verify_basic_user

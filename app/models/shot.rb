@@ -41,6 +41,7 @@ class Shot < ApplicationRecord
   broadcasts_to ->(shot) { [shot.user, :shots] }, inserts_by: :prepend, locals: {user_override: true}
   after_commit :populate_dropdown_values
   after_create_commit :send_web_push_notification
+  after_create_commit :enqueue_upstream_push
   after_create_commit :send_email_notification
 
   scope :visible, -> { where(public: true) }
@@ -153,6 +154,10 @@ class Shot < ApplicationRecord
     return if self.class.where(user_id:).where(created_at: 24.hours.ago..).count < DAILY_LIMIT
 
     errors.add(:base, :over_daily_limit, message: "You've reached your daily limit of #{DAILY_LIMIT} shots. Please consider upgrading to a premium account.")
+  end
+
+  def enqueue_upstream_push
+    UpstreamShotPushJob.perform_later(self) if user&.upstream_push_enabled?
   end
 
   def send_web_push_notification

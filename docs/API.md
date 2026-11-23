@@ -38,6 +38,16 @@ curl -H "X-Upload-Key: vzu_your_key" https://<your-instance>/api/me
 
 - The key belongs to one user and grants exactly that user's permissions; there
   are no OAuth scopes to request.
+- Upload keys also work as **HTTP Basic passwords**, which is handy for clients
+  that only offer a username/password field. In that form the username is
+  ignored — put the key in the password field and any username (or none):
+
+```bash
+curl -u "anything:vzu_your_key" https://<your-instance>/api/me
+```
+
+A real Visualizer password still works with your email as the username; only a
+password starting with `vzu_` is treated as an upload key.
 - Session cookies are not accepted by `/api`. A browser session and a key are
   separate credentials.
 - `401` means the key is missing, unknown, or revoked.

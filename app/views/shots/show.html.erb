@@ -1,8 +1,8 @@
-<% content_for(:html_title) { "Visualizer | #{@shot.profile_title}" } %>
+<% content_for(:html_title) { "#{Instance.name} | #{@shot.profile_title}" } %>
 <% content_for(:head) do %>
   <meta name="description" content="<%= meta_description(@shot) %>">
   <meta property="og:title" content="<%= @shot.profile_title %>">
-  <meta property="og:url" content="https://visualizer.coffee/shots/<%= @shot.id %>">
+  <meta property="og:url" content="<%= Instance.url %><%= shot_path(@shot) %>">
   <meta property="og:description" content="<%= meta_description(@shot) %>">
 <% end %>
 <% tasting_series = [tasting_assessment_series(@shot, name: @shot.profile_title.presence || "Shot")].compact %>

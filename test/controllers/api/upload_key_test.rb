@@ -135,6 +135,53 @@ module Api
       assert_nil shot.api_token_id
     end
 
+    test "basic auth with an upload key ignores a bogus username" do
+      get api_me_url, headers: basic_headers("not-an-email", @api_token.token), as: :json
+
+      assert_response :success
+      assert_equal @user.id, response.parsed_body["id"]
+    end
+
+    test "basic auth with an upload key and an empty username" do
+      get api_me_url, headers: basic_headers("", @api_token.token), as: :json
+
+      assert_response :success
+      assert_equal @user.id, response.parsed_body["id"]
+    end
+
+    test "basic auth with an unknown upload key is unauthorized" do
+      get api_me_url, headers: basic_headers("whoever", "#{ApiToken::PREFIX}unknown"), as: :json
+
+      assert_response :unauthorized
+    end
+
+    test "basic auth with a revoked upload key is unauthorized" do
+      @api_token.revoke!
+
+      get api_me_url, headers: basic_headers("whoever", @api_token.token), as: :json
+
+      assert_response :unauthorized
+    end
+
+    test "basic auth with a real password still works" do
+      user = create(:user)
+
+      get api_me_url, headers: basic_headers(user.email, "password"), as: :json
+
+      assert_response :success
+      assert_equal user.id, response.parsed_body["id"]
+    end
+
+    test "basic auth with an upload key records attribution" do
+      file = JSON.parse(Rails.root.join("test/files/beanconqueror.json").read)
+
+      post upload_api_shots_url, headers: basic_headers("anything", @api_token.token), params: file, as: :json
+
+      assert_response :success
+      assert_equal @api_token, Shot.find(response.parsed_body["id"]).api_token
+      assert @api_token.reload.last_used_at.present?
+    end
+
     test "does not create a persisted session or set a session cookie" do
       assert_no_difference "Session.count" do
         get api_me_url, headers: {"Authorization" => "Bearer #{@api_token.token}"}, as: :json
@@ -142,6 +189,12 @@ module Api
 
       assert_response :success
       assert_not_includes response.headers["Set-Cookie"].to_s, "session_id="
+    end
+
+    private
+
+    def basic_headers(username, password)
+      {"HTTP_AUTHORIZATION" => ActionController::HttpAuthentication::Basic.encode_credentials(username, password)}
     end
   end
 end

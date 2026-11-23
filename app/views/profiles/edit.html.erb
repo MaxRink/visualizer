@@ -147,6 +147,41 @@
           <% end %>
         </div>
       <% end %>
+      <div class="py-6">
+        <h3 class="text-lg leading-6 font-medium text-neutral-900 dark:text-neutral-100">Mirror to upstream</h3>
+        <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          Send every new shot to another Visualizer instance with your own token. This is off by default and only ever sends this account's shots; no upload keys or other users' data leave this instance. A failed push never blocks the local shot.
+        </p>
+        <% if @profile.upstream_api_token.present? %>
+          <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">Token configured. It is never shown again; replace it below or clear it.</p>
+        <% end %>
+        <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+          Last checked: <%= @profile.upstream_push_checked_at ? time_ago_in_words(@profile.upstream_push_checked_at) + " ago" : "never" %>.
+          Last push: <%= @upstream_last_push ? time_ago_in_words(@upstream_last_push) + " ago" : "never" %>.
+          <% if @upstream_last_error.present? %><span class="text-red-600 dark:text-red-400">Last error: <%= @upstream_last_error %></span><% end %>
+        </p>
+        <%= form_with(model: @profile, url: profile_path, class: "mt-4 space-y-3") do |f| %>
+          <label class="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+            <%= f.check_box :upstream_push_enabled, class: "standard-checkbox size-4 cursor-pointer" %>
+            Enable mirroring
+          </label>
+          <div>
+            <%= f.label :upstream_base_url, "Upstream base URL", class: "standard-label" %>
+            <%= f.url_field :upstream_base_url, class: "mt-1 standard-input", placeholder: "https://visualizer.coffee" %>
+          </div>
+          <div>
+            <%= f.label :upstream_api_token, "Upstream token (write-only)", class: "standard-label" %>
+            <%= f.password_field :upstream_api_token, class: "mt-1 standard-input", autocomplete: "off", placeholder: "Leave blank to keep the current token" %>
+          </div>
+          <%= f.submit "Save mirroring settings", class: "button-white px-3 py-2 text-sm" %>
+        <% end %>
+        <div class="mt-3 flex items-center gap-2">
+          <%= button_to "Send test", test_upstream_push_profile_path, class: "button-white px-3 py-2 text-sm" %>
+          <% if @profile.upstream_api_token.present? %>
+            <%= button_to "Clear token", clear_upstream_token_profile_path, method: :delete, class: "text-sm text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300", form: {data: {turbo_confirm: "Clear the upstream token and disable mirroring?"}} %>
+          <% end %>
+        </div>
+      </div>
       <% if Current.user.has_airtable? %>
         <div class="py-6">
           <%= render "shared/modal" %>

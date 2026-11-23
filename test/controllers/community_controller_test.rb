@@ -10,10 +10,7 @@ class CommunityControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_acceptable
     assert_equal "application/json", response.media_type
-    assert_equal({
-      "error" => "This is not an API endpoint.",
-      "api_docs" => "https://apidocs.visualizer.coffee"
-    }, response.parsed_body)
+    assert_equal({"error" => "This is not an API endpoint."}, response.parsed_body)
   end
 
   test "autocomplete directs JSON requests to the API documentation" do
@@ -23,10 +20,7 @@ class CommunityControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_acceptable
     assert_equal "application/json", response.media_type
-    assert_equal({
-      "error" => "This is not an API endpoint.",
-      "api_docs" => "https://apidocs.visualizer.coffee"
-    }, response.parsed_body)
+    assert_equal({"error" => "This is not an API endpoint."}, response.parsed_body)
   end
 
   test "autocomplete renders HTML for stimulus-autocomplete" do

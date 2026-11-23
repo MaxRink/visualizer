@@ -58,10 +58,8 @@ module VisualizerMetrics
     route = "unmatched" if route.empty?
     method = METHODS.include?(request.request_method) ? request.request_method : "OTHER"
     status = status.to_i.between?(100, 599) ? status.to_i.to_s : "OTHER"
-    http_metric.increment(method: method, route: route, status: status)
-    if duration_seconds
-      http_duration_metric.observe(duration_seconds.to_f, method: method, route: route, status: status)
-    end
+    http_metric.increment(method:, route:, status:)
+    http_duration_metric.observe(duration_seconds.to_f, method:, route:, status:) if duration_seconds
   rescue StandardError => e
     Rails.logger.warn("Prometheus Exporter unavailable for HTTP metric: #{e.class}") if defined?(Rails)
   end
@@ -69,7 +67,7 @@ module VisualizerMetrics
   def observe_job(event, status)
     job = event.payload[:job].class.name.to_s
     job = "unknown" if job.empty?
-    jobs_metric.increment(job: job, status: status.to_s)
+    jobs_metric.increment(job:, status: status.to_s)
   rescue StandardError => e
     Rails.logger.warn("Prometheus Exporter unavailable for job metric: #{e.class}") if defined?(Rails)
   end
