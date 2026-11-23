@@ -1,6 +1,11 @@
 class Identity < ApplicationRecord
   include Lockable
 
+  PROVIDER_LABELS = {
+    "homelab_oidc" => "OpenID Connect",
+    "airtable" => "Airtable"
+  }.freeze
+
   performs :refresh_token!, queue_as: :high do
     retry_on PgLock::UnableToLockError, wait: :polynomially_longer
   end
@@ -14,6 +19,14 @@ class Identity < ApplicationRecord
   validates :uid, uniqueness: {scope: :provider}
 
   scope :by_provider, ->(provider) { where(provider:) }
+
+  def provider_label
+    PROVIDER_LABELS.fetch(provider, provider.to_s.humanize)
+  end
+
+  def email
+    blob&.dig("info", "email").presence
+  end
 
   def valid_token?
     expires_at.nil? || expires_at.future?

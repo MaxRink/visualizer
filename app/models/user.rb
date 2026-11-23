@@ -114,6 +114,20 @@ class User < ApplicationRecord
     update!(confirmed_at: Time.current, disabled_at: nil) unless confirmed?
   end
 
+  # OIDC-provisioned accounts carry a random password nobody knows; treat it as
+  # no password at all. PasswordsController clears the flag on reset.
+  def usable_password?
+    password_digest.present? && !oidc_provisioned?
+  end
+
+  def oidc_identity
+    identities.by_provider("homelab_oidc").order(:created_at).first
+  end
+
+  def would_lock_out?(identity)
+    !usable_password? && webauthn_credentials.none? && identities.where.not(id: identity.id).none?
+  end
+
   def premium?
     return true if ENV["VISUALIZER_SELF_HOSTED"] == "true"
 
@@ -262,6 +276,7 @@ end
 #  journal_enabled            :boolean          default(FALSE), not null
 #  last_read_change           :datetime
 #  name                       :string
+#  oidc_provisioned           :boolean          default(FALSE), not null
 #  password_digest            :string           default(""), not null
 #  premium_expires_at         :datetime
 #  public                     :boolean          default(FALSE), not null

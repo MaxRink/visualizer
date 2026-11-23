@@ -17,7 +17,8 @@ class PasswordsController < ApplicationController
   def update
     params.expect(:password, :password_confirmation)
 
-    if @user.update(params.permit(:password, :password_confirmation))
+    attributes = params.permit(:password, :password_confirmation).merge(oidc_provisioned: false)
+    if @user.update(attributes)
       @user.sessions.destroy_all
       @user.access_grants.destroy_all
       @user.access_tokens.destroy_all

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "dblink"
   enable_extension "pg_catalog.plpgsql"
@@ -386,6 +386,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_120000) do
     t.jsonb "journal_columns"
     t.datetime "disabled_at"
     t.datetime "confirmed_at"
+    t.boolean "oidc_provisioned", default: false, null: false
     t.index ["creem_customer_id"], name: "index_users_on_creem_customer_id", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["lemon_squeezy_customer_id"], name: "index_users_on_lemon_squeezy_customer_id", unique: true

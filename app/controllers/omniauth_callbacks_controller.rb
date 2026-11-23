@@ -1,4 +1,6 @@
 class OmniauthCallbacksController < ApplicationController
+  OIDC_LINK_TTL = 15.minutes
+
   # Airtable is an authenticated premium integration; OIDC must remain public
   # for first-time sign-in and account linking.
   before_action :require_authentication, :check_premium!, only: :airtable
@@ -44,16 +46,19 @@ class OmniauthCallbacksController < ApplicationController
       identity = Current.user.identities.create!(provider: "homelab_oidc", uid: subject, blob: auth)
       apply_oidc_admin_role(Current.user, identity, raw_info)
       redirect_to shots_path, notice: "OpenID Connect account linked"
-    elsif User.exists?(email:)
-      oidc_failure("Sign in with the local account once before linking OpenID Connect.")
     else
-      User.transaction do
-        user = User.create!(email:, password: SecureRandom.base58(32), confirmed_at: Time.current)
-        identity = user.identities.create!(provider: "homelab_oidc", uid: subject, blob: auth)
-        apply_oidc_admin_role(user, identity, raw_info)
-        start_new_session_for(user)
+      existing_user = User.find_by(email:)
+      if existing_user
+        request_oidc_link_confirmation(existing_user, subject, email, raw_info)
+      else
+        User.transaction do
+          user = User.create!(email:, password: SecureRandom.base58(32), confirmed_at: Time.current, oidc_provisioned: true)
+          identity = user.identities.create!(provider: "homelab_oidc", uid: subject, blob: auth)
+          apply_oidc_admin_role(user, identity, raw_info)
+          start_new_session_for(user)
+        end
+        redirect_to after_authentication_url, notice: "OpenID Connect account created"
       end
-      redirect_to after_authentication_url, notice: "OpenID Connect account created"
     end
   rescue ActiveRecord::RecordNotUnique
     oidc_failure("That OpenID Connect identity is already linked to another account.")
@@ -70,31 +75,28 @@ class OmniauthCallbacksController < ApplicationController
     redirect_to new_session_url, alert: message
   end
 
-  def oidc_admin_group(raw_info)
-    trusted_group = ENV["OIDC_ADMIN_GROUP"].to_s.strip
-    return if trusted_group.blank?
+  # Never link on the IdP's email claim alone: when the address already belongs
+  # to an account, the owner must confirm a short-lived link sent to that
+  # address (a signed-in user links through the session branch above instead).
+  def request_oidc_link_confirmation(user, subject, email, raw_info)
+    return oidc_failure("Confirm your email address first, then link OpenID Connect.") unless user.confirmed?
 
-    groups = raw_info["groups"] || raw_info[:groups]
-    groups = groups.split if groups.is_a?(String)
-    trusted_group if Array(groups).map(&:to_s).include?(trusted_group)
+    token = Rails.application.message_verifier(:oidc_link).generate(
+      {
+        "user_id" => user.id,
+        "sub" => subject,
+        "email" => email,
+        "group" => OidcRole.matched_group(raw_info["groups"] || raw_info[:groups])
+      },
+      expires_in: OIDC_LINK_TTL
+    )
+    UserMailer.with(user:, token:).oidc_link.deliver_later
+
+    redirect_to homelab_oidc_link_path, notice: "Check #{user.email} for a link to finish connecting OpenID Connect."
   end
 
   def apply_oidc_admin_role(user, identity, raw_info)
-    trusted_group = oidc_admin_group(raw_info)
-    if trusted_group
-      unless identity.oidc_role_managed?
-        identity.update!(
-          oidc_role_managed: true,
-          oidc_role_group: trusted_group,
-          oidc_previous_admin: user.admin?,
-          oidc_previous_developer: user.developer?
-        )
-      end
-
-      user.update!(admin: true, developer: true)
-    elsif identity.oidc_role_managed?
-      user.update!(admin: identity.oidc_previous_admin?, developer: identity.oidc_previous_developer?)
-      identity.update!(oidc_role_managed: false, oidc_role_group: nil)
-    end
+    groups = raw_info["groups"] || raw_info[:groups]
+    OidcRole.apply(user, identity, group: OidcRole.matched_group(groups))
   end
 end

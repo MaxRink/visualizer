@@ -43,4 +43,10 @@ class UserMailer < ApplicationMailer
     @user = params[:user]
     mail to: @user.email, subject: "Quick heads-up before your renewal"
   end
+
+  def oidc_link
+    @user = params[:user]
+    @token = params[:token]
+    mail to: @user.email, subject: "Finish connecting OpenID Connect to Visualizer"
+  end
 end

@@ -1,0 +1,22 @@
+<% content_for(:title) { "Finish connecting OpenID Connect" } %>
+<% content_for(:preheader) { "Confirm the link between your OpenID Connect account and Visualizer." } %>
+<tr>
+  <td style="padding: 24px; background-color: #ffffff; border-radius: 16px">
+    <h1 style="margin: 0 0 24px; color: #171717; font-size: 28px; line-height: 36px">
+      Finish connecting OpenID Connect
+    </h1>
+    <p style="margin: 0 0 24px; color: #525252; font-size: 16px; line-height: 24px">
+      Someone signed in to Visualizer with an OpenID Connect account whose verified email address is this one. To connect it to your existing account, confirm the link:
+    </p>
+    <p style="margin: 0 0 24px; color: #525252; font-size: 16px; line-height: 24px">
+      <%= link_to "Connect OpenID Connect", confirm_homelab_oidc_link_url(token: @token), class: "hover-no-underline", style: "color: #db3e27; text-decoration-line: underline" %>
+    </p>
+    <p style="margin: 0 0 24px; color: #525252; font-size: 16px; line-height: 24px">
+      The link works once and expires in 15 minutes. If it wasn’t you, ignore this email: nothing is linked until you click.
+    </p>
+    <p style="margin: 0; color: #525252; font-size: 16px; line-height: 24px">
+      Thanks for using Visualizer! ☕<br>
+      Miha
+    </p>
+  </td>
+</tr>

@@ -1,0 +1,15 @@
+<div class="flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+  <div class="w-full max-w-md space-y-8 text-center">
+    <%= inline_svg_tag "logo.svg", class: "w-auto h-16 mx-auto fill-current text-neutral-900 dark:text-neutral-200" %>
+    <h2 class="mt-10 text-3xl font-extrabold text-neutral-900 dark:text-neutral-200">Check your email</h2>
+    <p class="text-neutral-700 dark:text-neutral-300">
+      An OpenID Connect account with your email address tried to sign in. I sent a link to that address to connect it to your existing Visualizer account.
+    </p>
+    <p class="text-neutral-700 dark:text-neutral-300">
+      The link expires in 15 minutes and nothing is connected until you open it.
+    </p>
+    <p class="text-neutral-700 dark:text-neutral-300">
+      Didn't get it? Sign in to your account and use the OpenID Connect section on <%= link_to "your profile", new_session_path, class: "standard-link" %> instead.
+    </p>
+  </div>
+</div>

@@ -31,6 +31,19 @@ class ProfilesController < ApplicationController
     redirect_to edit_profile_path, notice: "Airtable disconnected."
   end
 
+  def disconnect_oidc
+    identity = @profile.oidc_identity
+    return redirect_to edit_profile_path, alert: "No OpenID Connect account is linked." unless identity
+
+    if @profile.would_lock_out?(identity)
+      flash[:alert] = "You cannot unlink your only way to sign in. Add a passkey or set a password first."
+      return redirect_to edit_profile_path
+    end
+
+    identity.destroy!
+    redirect_to edit_profile_path, notice: "OpenID Connect account unlinked."
+  end
+
   private
 
   def set_profile

@@ -34,6 +34,8 @@ Rails.application.routes.draw do
   get "auth/airtable/callback", to: "omniauth_callbacks#airtable"
   get "auth/airtable", as: :connect_airtable
   get "auth/homelab_oidc/callback", as: :homelab_oidc_callback, to: "omniauth_callbacks#homelab_oidc"
+  get "auth/homelab_oidc/link", to: "oidc_links#show", as: :homelab_oidc_link
+  get "auth/homelab_oidc/link/:token", to: "oidc_links#confirm", as: :confirm_homelab_oidc_link
   get "auth/homelab_oidc", to: "omniauth_callbacks#homelab_oidc_method_not_allowed"
   post "auth/homelab_oidc", as: :sign_in_with_homelab_oidc
   get "auth/failure", to: "sessions#omniauth_failure"
@@ -126,6 +128,7 @@ Rails.application.routes.draw do
 
   resource :profile, only: %i[edit update] do
     resource :upload_key, only: %i[create destroy]
+    delete :disconnect_oidc
     resource :journal_columns, only: :update
     get :reset_chart_settings
     delete :disconnect_airtable
