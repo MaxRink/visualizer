@@ -40,4 +40,5 @@
 *.dump
 
 /snippets.rb
-/docs/
+/docs/*
+!/docs/API.md

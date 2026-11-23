@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_24_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "dblink"
   enable_extension "pg_catalog.plpgsql"
@@ -327,7 +327,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_160000) do
     t.integer "mouthfeel"
     t.integer "bitterness"
     t.jsonb "grind_suggestion"
+    t.uuid "api_token_id"
     t.index ["airtable_id"], name: "index_shots_on_airtable_id"
+    t.index ["api_token_id"], name: "index_shots_on_api_token_id"
     t.index ["bean_brand"], name: "index_shots_on_bean_brand", opclass: :gin_trgm_ops, using: :gin
     t.index ["bean_notes"], name: "index_shots_on_bean_notes", opclass: :gin_trgm_ops, using: :gin
     t.index ["bean_type"], name: "index_shots_on_bean_type", opclass: :gin_trgm_ops, using: :gin
@@ -428,6 +430,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_160000) do
   add_foreign_key "shot_informations", "shots"
   add_foreign_key "shot_tags", "shots"
   add_foreign_key "shot_tags", "tags"
+  add_foreign_key "shots", "api_tokens", on_delete: :nullify
   add_foreign_key "shots", "canonical_coffee_bags"
   add_foreign_key "shots", "coffee_bags"
   add_foreign_key "shots", "users"

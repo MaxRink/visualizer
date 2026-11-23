@@ -24,7 +24,7 @@ Please read the [Contribution Guidelines](CONTRIBUTING.md) first 😊
 
 There is an API available. If something you would like is not there, please open a new [Issue](https://github.com/miharekar/visualizer/issues/) detailing your wishes.
 
-You can read [the source code](/app/controllers/api) or [the LLM-generated API documentation](https://apidocs.visualizer.coffee).
+You can read [the source code](/app/controllers/api), the [self-hosted API guide](docs/API.md) (upload keys, curl, iOS Shortcuts, Tasker), or [the LLM-generated API documentation](https://apidocs.visualizer.coffee).
 
 ## Dependencies
 

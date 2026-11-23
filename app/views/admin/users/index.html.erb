@@ -46,7 +46,7 @@
               <%= @last_signed_in_at[user.id] ? time_ago_in_words(@last_signed_in_at[user.id]) + " ago" : "never" %>
             </td>
             <td class="py-3 pr-4 text-right text-neutral-700 dark:text-neutral-300"><%= @shot_counts.fetch(user.id, 0) %></td>
-            <td class="py-3 pr-4 text-neutral-700 dark:text-neutral-300"><%= @upload_key_user_ids.include?(user.id) ? "yes" : "—" %></td>
+            <td class="py-3 pr-4 text-neutral-700 dark:text-neutral-300"><%= @upload_key_counts.fetch(user.id, 0).zero? ? "—" : @upload_key_counts.fetch(user.id) %></td>
             <td class="py-3">
               <div class="flex flex-wrap items-center gap-2">
                 <% if user.admin? %>

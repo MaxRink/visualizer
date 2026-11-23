@@ -178,10 +178,12 @@ class User < ApplicationRecord
     creem_customer_id.present? || lemon_squeezy_customer_id.present?
   end
 
-  def upload_key
-    api_tokens.active.order(:created_at).last
+  def upload_keys
+    api_tokens.active.order(:created_at)
   end
 
+  # Kept for the "one key per user" callers and specs: revoke everything, then
+  # issue a fresh key. The profile page manages individual keys instead.
   def rotate_upload_key!
     transaction do
       api_tokens.active.find_each(&:revoke!)

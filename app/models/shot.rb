@@ -14,6 +14,7 @@ class Shot < ApplicationRecord
 
   belongs_to :user, optional: true, touch: true
   belongs_to :coffee_bag, optional: true
+  belongs_to :api_token, optional: true
   belongs_to :canonical_coffee_bag, optional: true
   has_one :information, class_name: "ShotInformation", dependent: :destroy, inverse_of: :shot
   has_many :shared_shots, dependent: :destroy
@@ -211,6 +212,7 @@ end
 #  created_at              :datetime         not null
 #  updated_at              :datetime         not null
 #  airtable_id             :string
+#  api_token_id            :uuid
 #  canonical_coffee_bag_id :uuid
 #  coffee_bag_id           :uuid
 #  user_id                 :uuid
