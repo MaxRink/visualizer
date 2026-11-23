@@ -90,38 +90,34 @@
           <%= render Notification.new(type: :alert, heading: "Passkey already registered", text: "This passkey is already registered to your account.", timeout: 3000) %>
         </div>
       </div>
-      <div class="py-6" data-controller="upload-key">
-        <h3 class="text-lg leading-6 font-medium text-neutral-900 dark:text-neutral-100">Upload key</h3>
+      <div class="py-6">
+        <h3 class="text-lg leading-6 font-medium text-neutral-900 dark:text-neutral-100">Upload keys</h3>
         <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-          A password-free credential for the public API. Use it with scripts and clients that cannot sign in with OpenID Connect.
+          Password-free credentials for the public API.
+          <%= link_to "How to use this key", "https://github.com/MaxRink/visualizer/blob/main/docs/API.md", class: "standard-link", target: "_blank" %>.
         </p>
-        <% if @upload_key %>
-          <div class="mt-4 rounded-md bg-neutral-50 px-3 py-2 dark:bg-neutral-800">
+        <% @upload_keys.each do |upload_key| %>
+          <div class="mt-4 rounded-md bg-neutral-50 px-3 py-2 dark:bg-neutral-800" data-controller="upload-key">
             <p class="text-xs text-neutral-500 dark:text-neutral-400">
-              Created <%= time_ago_in_words(@upload_key.created_at) %> ago
-              <% if @upload_key.last_used_at %>&bull; Last used <%= time_ago_in_words(@upload_key.last_used_at) %> ago<% end %>
+              <%= upload_key.name %>
+              &bull; Created <%= time_ago_in_words(upload_key.created_at) %> ago
+              <% if upload_key.last_used_at %>&bull; Last used <%= time_ago_in_words(upload_key.last_used_at) %> ago<% end %>
             </p>
             <div class="mt-2 flex items-center gap-2">
-              <code class="min-w-0 flex-1 truncate font-mono text-sm text-neutral-900 dark:text-neutral-100" data-upload-key-target="masked"><%= @upload_key.masked_token %></code>
-              <code class="hidden min-w-0 flex-1 truncate font-mono text-sm text-neutral-900 dark:text-neutral-100" data-upload-key-target="plain"><%= @upload_key.token %></code>
+              <code class="min-w-0 flex-1 truncate font-mono text-sm text-neutral-900 dark:text-neutral-100" data-upload-key-target="masked"><%= upload_key.masked_token %></code>
+              <code class="hidden min-w-0 flex-1 truncate font-mono text-sm text-neutral-900 dark:text-neutral-100" data-upload-key-target="plain"><%= upload_key.token %></code>
               <button type="button" class="button-white px-3 py-1.5 text-sm" data-action="upload-key#toggle" data-upload-key-target="toggle">Reveal</button>
               <button type="button" class="button-white px-3 py-1.5 text-sm" data-action="upload-key#copy" data-upload-key-target="copy">Copy</button>
+              <%= button_to "Revoke", profile_upload_key_path(upload_key), method: :delete, class: "text-sm text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300", form: {data: {turbo_confirm: "Revoke #{upload_key.name}? Clients using it stop working immediately."}} %>
             </div>
           </div>
-          <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-            Send it as <code class="font-mono">Authorization: Bearer &lt;key&gt;</code> or <code class="font-mono">X-Upload-Key: &lt;key&gt;</code>.
-          </p>
-          <div class="mt-3 flex items-center gap-2">
-            <%= button_to "Regenerate", profile_upload_key_path, class: "button-white px-3 py-2 text-sm", form: {data: {turbo_confirm: "Generate a new upload key? The current key stops working immediately."}} %>
-            <%= button_to "Revoke", profile_upload_key_path, method: :delete, class: "text-sm text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300", form: {data: {turbo_confirm: "Revoke your upload key? Scripts using it stop working immediately."}} %>
-          </div>
-        <% else %>
-          <p class="mt-4 text-sm text-neutral-600 dark:text-neutral-400">
-            You don't have an upload key yet.
-          </p>
-          <div class="mt-3">
-            <%= button_to "Create upload key", profile_upload_key_path, class: "button-white px-3 py-2 text-sm" %>
-          </div>
+        <% end %>
+        <% if @upload_keys.none? %>
+          <p class="mt-4 text-sm text-neutral-600 dark:text-neutral-400">You don't have an upload key yet.</p>
+        <% end %>
+        <%= form_with url: profile_upload_keys_path, class: "mt-4 flex items-center gap-2" do |f| %>
+          <%= f.text_field :name, placeholder: "Key name (e.g. Beanconqueror)", class: "standard-input" %>
+          <%= f.submit "Create upload key", class: "button-white px-3 py-2 text-sm" %>
         <% end %>
       </div>
       <% if oidc_configured? %>

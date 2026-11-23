@@ -13,7 +13,7 @@ module Admin
       ids = @users.map(&:id)
       @shot_counts = Shot.where(user_id: ids).group(:user_id).count
       @last_signed_in_at = Session.where(user_id: ids).group(:user_id).maximum(:created_at)
-      @upload_key_user_ids = ApiToken.active.where(user_id: ids).distinct.pluck(:user_id)
+      @upload_key_counts = ApiToken.active.where(user_id: ids).group(:user_id).count
     end
 
     def promote

@@ -45,6 +45,15 @@ class ApiTokenTest < ActiveSupport::TestCase
     assert_nil ApiToken.ensure_encryption_configured!
   end
 
+  test "allows several active keys per user" do
+    user = create(:user)
+    first = create(:api_token, user:, name: "One")
+    second = create(:api_token, user:, name: "Two")
+
+    assert_equal [first, second], user.upload_keys.to_a
+    assert user.upload_keys.include?(first)
+  end
+
   test "rotating keeps one active token per user" do
     user = create(:user)
     first = user.rotate_upload_key!

@@ -2,14 +2,16 @@ class UploadKeysController < ApplicationController
   before_action :require_authentication
 
   def create
-    Current.user.rotate_upload_key!
+    name = params[:name].to_s.squish.presence || "Upload key"
 
-    redirect_to edit_profile_path, notice: "A new upload key was generated."
+    Current.user.api_tokens.create!(name:)
+    redirect_to edit_profile_path, notice: "Upload key created."
   end
 
   def destroy
-    Current.user.api_tokens.active.find_each(&:revoke!)
+    key = Current.user.api_tokens.find(params.expect(:id))
+    key.revoke!
 
-    redirect_to edit_profile_path, notice: "Your upload key was revoked."
+    redirect_to edit_profile_path, notice: "Upload key revoked."
   end
 end
