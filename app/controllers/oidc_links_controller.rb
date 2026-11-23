@@ -2,7 +2,7 @@
 # The callback emails a short-lived signed link to the account address; this
 # controller finishes the link once the owner proves control of that inbox.
 class OidcLinksController < ApplicationController
-  rate_limit to: 10, within: 15.minutes, name: "oidc-link-confirm", only: :confirm, with: -> { redirect_to new_session_url, alert: "Try again later." }
+  rate_limit to: 10, within: 15.minutes, name: "oidc-link-confirm", only: :confirm, if: -> { RateLimits.enabled? }, with: -> { redirect_to new_session_url, alert: "Try again later." }
 
   def show; end
 

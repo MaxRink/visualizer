@@ -1,5 +1,5 @@
 class PasskeysController < ApplicationController
-  rate_limit to: 10, within: 3.minutes, name: "passkeys-callback", only: :callback, with: -> { head :too_many_requests }
+  rate_limit to: 10, within: 3.minutes, name: "passkeys-callback", only: :callback, if: -> { RateLimits.enabled? }, with: -> { head :too_many_requests }
 
   before_action :require_authentication, except: %i[sign_in callback]
 

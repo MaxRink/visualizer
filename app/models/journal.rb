@@ -4,7 +4,7 @@ class Journal
   class InvalidChange < StandardError; end
 
   PAGE_SIZE = 30
-  MAX_BATCH = 100
+  MAX_BATCH = 100 # default; raise it with VISUALIZER_JOURNAL_MAX_BATCH
   DEFAULT_COLUMNS = %w[espresso_enjoyment start_time coffee profile_title bean_weight grinder_setting grinder_model drink_weight duration actions].freeze
   LABELS = {
     "start_time" => "Brewed at", "coffee" => "Coffee", "profile_title" => "Profile",
@@ -96,7 +96,7 @@ class Journal
   end
 
   def shots(ids, fields:)
-    raise InvalidChange, "Choose up to #{MAX_BATCH} shots" unless ids.is_a?(Array) && ids.size.between?(1, MAX_BATCH) && ids.uniq.size == ids.size && ids.all? { it.is_a?(String) && it.match?(ApplicationRecord::UUID_PATTERN) }
+    raise InvalidChange, "Choose up to #{Limits.journal_max_batch} shots" unless ids.is_a?(Array) && ids.size.between?(1, Limits.journal_max_batch) && ids.uniq.size == ids.size && ids.all? { it.is_a?(String) && it.match?(ApplicationRecord::UUID_PATTERN) }
 
     shots = for_list(scope.where(id: ids).reorder(:id), fields:)
     (fields & NOTES).each { shots = shots.public_send("with_rich_text_#{it}_and_embeds") }

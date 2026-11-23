@@ -3,8 +3,8 @@ module Api
     include Shots::Editing
     include Filterable
 
-    rate_limit to: 10, within: 1.minute, name: "api-full-1-minute", only: :index, if: -> { params[:full].present? }
-    rate_limit to: 50, within: 10.minutes, name: "api-full-10-minutes", only: :index, if: -> { params[:full].present? }
+    rate_limit to: 10, within: 1.minute, name: "api-full-1-minute", only: :index, if: -> { RateLimits.enabled? && params[:full].present? }
+    rate_limit to: 50, within: 10.minutes, name: "api-full-10-minutes", only: :index, if: -> { RateLimits.enabled? && params[:full].present? }
 
     before_action :ignore_token_without_read_scope, except: %i[upload update destroy]
     before_action :verify_upload_access, only: %i[upload]
