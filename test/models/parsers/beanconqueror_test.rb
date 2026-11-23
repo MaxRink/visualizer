@@ -10,6 +10,10 @@ module Parsers
       Shot.from_file(user, File.read(path))
     end
 
+    def new_shot_from(hash, user: @user)
+      Shot.from_file(user, hash.to_json)
+    end
+
     test "extracts beanconqueror file" do
       shot = new_shot("test/files/beanconqueror.json")
       assert shot.valid?
@@ -23,6 +27,48 @@ module Parsers
       assert_equal "4", shot.grinder_setting
       assert_equal "1200", shot.drink_weight
       assert_equal "Parsers::Beanconqueror", shot.information.brewdata["parser"]
+    end
+
+    # Small inline fixture instead of the 3k-line JSON from PR #220: the parser
+    # only needs brewFlow series with timestamps.
+    def temperature_extended_brew
+      {
+        "brew" => {"config" => {"unix_timestamp" => 1_700_000_000}, "brew_beverage_quantity" => 36, "brew_quantity" => 36},
+        "preparation" => {"name" => "Extended temperature"},
+        "brewFlow" => {
+          "weight" => [
+            {"timestamp" => "10:00:00.000", "actual_weight" => 0},
+            {"timestamp" => "10:00:05.000", "actual_weight" => 18},
+            {"timestamp" => "10:00:10.000", "actual_weight" => 36}
+          ],
+          "temperatureFlow" => [
+            {"timestamp" => "10:00:00.000", "actual_temperature" => 93},
+            {"timestamp" => "10:00:05.000", "actual_temperature" => 93},
+            {"timestamp" => "10:00:10.000", "actual_temperature" => 93}
+          ],
+          "basketTemperatureFlow" => [
+            {"timestamp" => "10:00:00.000", "actual_temperature" => 90},
+            {"timestamp" => "10:00:05.000", "actual_temperature" => 91},
+            {"timestamp" => "10:00:10.000", "actual_temperature" => 92}
+          ],
+          "targetTemperatureFlow" => [
+            {"timestamp" => "10:00:00.000", "actual_temperature" => 92},
+            {"timestamp" => "10:00:05.000", "actual_temperature" => 93},
+            {"timestamp" => "10:00:10.000", "actual_temperature" => 94}
+          ]
+        }
+      }
+    end
+
+    test "extracts basket and target temperature series from Beanconqueror" do
+      shot = new_shot_from(temperature_extended_brew)
+
+      assert shot.valid?
+      assert_equal %w[basketTemperatureFlow targetTemperatureFlow temperatureFlow weight], shot.information.brewdata["brewFlow"].keys.sort
+
+      chart = ShotChart::ParsedShot.new(shot)
+      assert_equal [90, 91, 92], chart.data["espresso_temperature_basket"]
+      assert_equal [92, 93, 94], chart.data["espresso_temperature_goal"]
     end
 
     test "extracts real beanconqueror file" do
