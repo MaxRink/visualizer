@@ -1,3 +1,5 @@
+require Rails.root.join("lib", "logging_setup")
+
 if Rails.env.production?
   # Keep the console logger (the deployment reads docker logs) and only add the
   # AppSignal sink when it is actually configured.
