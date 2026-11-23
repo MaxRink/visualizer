@@ -49,6 +49,8 @@ class ProfilesController < ApplicationController
   def set_profile
     @profile = Current.user
     @upload_key = Current.user.upload_key
+    @shot_count = Current.user.shots.count
+    @storage_bytes = UserStorage.new(Current.user).bytes
   end
 
   def set_authorized_applications

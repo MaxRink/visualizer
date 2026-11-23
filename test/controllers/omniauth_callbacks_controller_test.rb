@@ -230,6 +230,35 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
     assert_equal user, Identity.find_by!(provider: "homelab_oidc", uid: "profile-subject").user
   end
 
+  test "OIDC_ALLOWED_GROUP refuses new accounts outside the group" do
+    previous = ENV["OIDC_ALLOWED_GROUP"]
+    ENV["OIDC_ALLOWED_GROUP"] = "homelab-users"
+    begin
+      assert_no_difference ["User.count", "Identity.count"] do
+        get homelab_oidc_callback_url, env: oidc_env("outsider", "outsider@example.test", true, ["other-group"])
+      end
+    ensure
+      ENV["OIDC_ALLOWED_GROUP"] = previous
+    end
+
+    assert_response :forbidden
+    assert_includes response.body, "Not invited"
+  end
+
+  test "OIDC_ALLOWED_GROUP admits new accounts from the group" do
+    previous = ENV["OIDC_ALLOWED_GROUP"]
+    ENV["OIDC_ALLOWED_GROUP"] = "homelab-users"
+    begin
+      assert_difference "User.count", 1 do
+        get homelab_oidc_callback_url, env: oidc_env("invited", "invited@example.test", true, ["homelab-users"])
+      end
+    ensure
+      ENV["OIDC_ALLOWED_GROUP"] = previous
+    end
+
+    assert_redirected_to shots_url
+  end
+
   test "airtable callback connects premium users" do
     user = create(:user, :premium)
     sign_in(user)

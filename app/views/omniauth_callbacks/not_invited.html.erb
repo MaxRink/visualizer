@@ -1,0 +1,13 @@
+<div class="flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+  <div class="w-full max-w-md space-y-8 text-center">
+    <%= inline_svg_tag "logo.svg", class: "w-auto h-16 mx-auto fill-current text-neutral-900 dark:text-neutral-200" %>
+    <h2 class="mt-10 text-3xl font-extrabold text-neutral-900 dark:text-neutral-200">Not invited</h2>
+    <p class="text-neutral-700 dark:text-neutral-300">
+      This instance only accepts OpenID Connect accounts from a specific group, and yours is not in it.
+    </p>
+    <p class="text-neutral-700 dark:text-neutral-300">
+      Ask whoever runs this instance to add you, or sign in with an account that already exists here.
+    </p>
+    <%= link_to "Back to sign in", new_session_path, class: "standard-link" %>
+  </div>
+</div>

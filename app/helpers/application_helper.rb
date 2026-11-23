@@ -1,4 +1,14 @@
 module ApplicationHelper
+  # The premium badge used to link to the pricing page; a self-hosted instance
+  # has no pricing page, so only the badge remains.
+  def premium_badge_link(&block)
+    if User.self_hosted?
+      tag.span(&block)
+    else
+      link_to(premium_index_path, &block)
+    end
+  end
+
   def avatar_url(user, size)
     avatar = user.avatar_attachment
     if avatar&.variable?
