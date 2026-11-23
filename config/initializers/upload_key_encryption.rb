@@ -3,6 +3,9 @@
 # so production refuses to boot with a message that names what is missing.
 Rails.application.config.after_initialize do
   next unless Rails.env.production?
+  # The Dockerfile precompiles assets with SECRET_KEY_BASE_DUMMY and no
+  # runtime secrets, so these guards must not fire at image build time.
+  next if ENV["SECRET_KEY_BASE_DUMMY"].present?
 
   ApiToken.ensure_encryption_configured!
 end
