@@ -1,4 +1,4 @@
-require Rails.root.join("lib", "logging_setup")
+require Rails.root.join("lib/logging_setup.rb")
 
 if Rails.env.production?
   # Keep the console logger (the deployment reads docker logs) and only add the
