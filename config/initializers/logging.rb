@@ -1,5 +1,5 @@
 if Rails.env.production?
-  appsignal_logger = Appsignal::Logger.new("rails")
-  Rails.logger.broadcast_to(appsignal_logger)
-  Rails.logger = ActiveSupport::TaggedLogging.new(appsignal_logger)
+  # Keep the console logger (the deployment reads docker logs) and only add the
+  # AppSignal sink when it is actually configured.
+  Rails.logger = LoggingSetup.production_logger
 end
