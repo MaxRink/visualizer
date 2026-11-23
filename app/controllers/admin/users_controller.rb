@@ -3,7 +3,6 @@ module Admin
     PER_PAGE = 50
 
     before_action :set_user, only: %i[promote demote disable enable revoke_upload_key destroy]
-    before_action :refuse_last_admin, only: %i[demote disable destroy]
 
     def index
       @page = [params[:page].to_i, 1].max
@@ -24,13 +23,15 @@ module Admin
     end
 
     def demote
-      @user.update!(admin: false)
+      return refuse_last_admin unless @user.demote_admin!
+
       audit("user.demote", @user)
       redirect_to admin_users_path, notice: "#{@user.email} is no longer an admin."
     end
 
     def disable
-      @user.update!(disabled_at: Time.current)
+      return refuse_last_admin unless @user.disable!
+
       audit("user.disable", @user)
       redirect_to admin_users_path, notice: "#{@user.email} is disabled."
     end
@@ -51,9 +52,11 @@ module Admin
     def destroy
       shots = @user.shots.count
       email = @user.email
+      @user.destroy_unless_last_admin!
       audit("user.destroy", @user, shots_kept: shots)
-      @user.destroy!
       redirect_to admin_users_path, notice: "#{email} was deleted. #{shots} shot(s) were kept without an owner."
+    rescue User::LastAdminError
+      refuse_last_admin
     end
 
     private
@@ -64,9 +67,6 @@ module Admin
     end
 
     def refuse_last_admin
-      return unless @user.admin?
-      return if User.where(admin: true).where.not(id: @user.id).exists?
-
       redirect_to admin_users_path, alert: "You cannot remove the last admin."
     end
   end

@@ -106,4 +106,39 @@ class UserTest < ActiveSupport::TestCase
 
     assert_not other.reload.would_lock_out?(other_identity)
   end
+
+  test "admin removal is guarded by an atomic conditional update" do
+    admin = create(:user, :admin)
+    other = create(:user, :admin)
+
+    assert admin.demote_admin!
+    assert_not admin.reload.admin?
+
+    assert_not other.demote_admin!
+    assert other.reload.admin?
+
+    assert_not other.disable!
+    assert_nil other.reload.disabled_at
+
+    assert_raises(User::LastAdminError) { other.destroy_unless_last_admin! }
+    assert User.exists?(other.id)
+  end
+
+  test "disabling is allowed while another admin remains" do
+    admin = create(:user, :admin)
+    create(:user, :admin)
+
+    assert admin.disable!
+    assert admin.reload.disabled?
+  end
+
+  test "destroy_unless_last_admin! deletes while another admin remains" do
+    admin = create(:user, :admin)
+    other = create(:user, :admin)
+
+    other.destroy_unless_last_admin!
+
+    assert_not User.exists?(other.id)
+    assert User.exists?(admin.id)
+  end
 end
