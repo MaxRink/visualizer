@@ -61,7 +61,76 @@ class ProfilesControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "push-notifications"
   end
 
+  test "hides the OpenID Connect section when the provider is not configured" do
+    get edit_profile_url
+
+    assert_response :success
+    assert_select "form[action=?]", sign_in_with_homelab_oidc_path, count: 0
+    assert_select "form[action=?]", disconnect_oidc_profile_path, count: 0
+  end
+
+  test "offers linking when no OpenID Connect identity is linked" do
+    with_oidc_configured do
+      get edit_profile_url
+    end
+
+    assert_response :success
+    assert_includes response.body, "Link OpenID Connect"
+    assert_select "form[action=?]", sign_in_with_homelab_oidc_path
+  end
+
+  test "shows the linked identity with an unlink action" do
+    create(:identity, user: @user, provider: "homelab_oidc", uid: "subject-1",
+      blob: {"info" => {"email" => "linked@example.test"}})
+
+    with_oidc_configured do
+      get edit_profile_url
+    end
+
+    assert_response :success
+    assert_includes response.body, "linked@example.test"
+    assert_select "form[action=?]", disconnect_oidc_profile_path
+  end
+
+  test "refuses to unlink the only way to sign in" do
+    user = create(:user, oidc_provisioned: true)
+    identity = create(:identity, user:, provider: "homelab_oidc", uid: "subject-1")
+    sign_in(user)
+
+    delete disconnect_oidc_profile_url
+
+    assert_redirected_to edit_profile_url
+    assert_match(/passkey/i, flash[:alert])
+    assert Identity.exists?(identity.id)
+  end
+
+  test "unlinks OpenID Connect when a passkey can still sign in" do
+    user = create(:user, oidc_provisioned: true)
+    identity = create(:identity, user:, provider: "homelab_oidc", uid: "subject-1")
+    create(:webauthn_credential, user:)
+    sign_in(user)
+
+    delete disconnect_oidc_profile_url
+
+    assert_redirected_to edit_profile_url
+    assert_not Identity.exists?(identity.id)
+
+    get shots_url
+    assert_response :success
+  end
+
   private
+
+  def with_oidc_configured
+    keys = %w[OIDC_ISSUER OIDC_CLIENT_ID OIDC_CLIENT_SECRET]
+    previous = keys.index_with { |key| ENV[key] }
+    ENV["OIDC_ISSUER"] = "https://auth.example.test"
+    ENV["OIDC_CLIENT_ID"] = "visualizer-test-client"
+    ENV["OIDC_CLIENT_SECRET"] = "visualizer-test-secret"
+    yield
+  ensure
+    previous.each { |key, value| ENV[key] = value }
+  end
 
   def stubbing(receiver, method_name, value)
     original = receiver.method(method_name)

@@ -30,7 +30,7 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "GET is rejected and the sign-in form starts the OIDC flow with POST" do
-    previous_oidc_values = %w[OIDC_ISSUER OIDC_CLIENT_ID OIDC_CLIENT_SECRET].to_h { |key| [key, ENV[key]] }
+    previous_oidc_values = %w[OIDC_ISSUER OIDC_CLIENT_ID OIDC_CLIENT_SECRET].index_with { |key| ENV[key] }
     ENV["OIDC_ISSUER"] = "https://auth.example.test"
     ENV["OIDC_CLIENT_ID"] = "visualizer-test-client"
     ENV["OIDC_CLIENT_SECRET"] = "visualizer-test-secret"
@@ -170,10 +170,64 @@ class OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
   test "does not link an unrecognised subject by matching email" do
     user = create(:user, email: "owner@example.test")
 
-    get homelab_oidc_callback_url, env: oidc_env("new-subject", "owner@example.test")
+    assert_enqueued_jobs 1, only: ActionMailer::MailDeliveryJob do
+      get homelab_oidc_callback_url, env: oidc_env("new-subject", "owner@example.test")
+    end
+
+    assert_redirected_to homelab_oidc_link_url
+    assert_not user.identities.exists?(provider: "homelab_oidc", uid: "new-subject")
+  end
+
+  test "links an existing account after the emailed confirmation link is opened" do
+    user = create(:user, email: "owner@example.test")
+
+    perform_enqueued_jobs do
+      get homelab_oidc_callback_url, env: oidc_env("new-subject", "owner@example.test")
+    end
+
+    mail = ActionMailer::Base.deliveries.last
+    link = mail.text_part.decoded[%r{/auth/homelab_oidc/link/\S+}]
+    assert link.present?, "expected the confirmation link in the email"
+
+    assert_difference ["Identity.count", "Session.count"], 1 do
+      get link
+    end
+
+    assert_redirected_to shots_url
+    identity = Identity.find_by!(provider: "homelab_oidc", uid: "new-subject")
+    assert_equal user, identity.user
+    assert_equal "owner@example.test", identity.email
+  end
+
+  test "rejects the confirmation link once it expires" do
+    user = create(:user, email: "owner@example.test")
+
+    perform_enqueued_jobs do
+      get homelab_oidc_callback_url, env: oidc_env("expired-subject", "owner@example.test")
+    end
+
+    link = ActionMailer::Base.deliveries.last.text_part.decoded[%r{/auth/homelab_oidc/link/\S+}]
+
+    travel 16.minutes do
+      assert_no_difference "Identity.count" do
+        get link
+      end
+    end
 
     assert_redirected_to new_session_url
-    assert_not user.identities.exists?(provider: "homelab_oidc", uid: "new-subject")
+    assert_not user.identities.exists?(provider: "homelab_oidc", uid: "expired-subject")
+  end
+
+  test "links a signed-in OIDC-only account without email confirmation" do
+    user = create(:user, oidc_provisioned: true)
+    sign_in(user)
+
+    assert_difference "Identity.count", 1 do
+      get homelab_oidc_callback_url, env: oidc_env("profile-subject", user.email, true)
+    end
+
+    assert_redirected_to shots_url
+    assert_equal user, Identity.find_by!(provider: "homelab_oidc", uid: "profile-subject").user
   end
 
   test "airtable callback connects premium users" do

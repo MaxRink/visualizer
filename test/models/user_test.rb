@@ -82,4 +82,28 @@ class UserTest < ActiveSupport::TestCase
     user = build(:user, unified_chart: true)
     assert user.unified_chart?
   end
+
+  test "oidc provisioned accounts have no usable password" do
+    provisioned = create(:user, oidc_provisioned: true)
+    regular = create(:user)
+
+    assert_not provisioned.usable_password?
+    assert regular.usable_password?
+  end
+
+  test "would_lock_out only when no other credential exists" do
+    user = create(:user, oidc_provisioned: true)
+    identity = create(:identity, user:, provider: "homelab_oidc", uid: "a")
+
+    assert user.would_lock_out?(identity)
+
+    create(:webauthn_credential, user:)
+    assert_not user.reload.would_lock_out?(identity)
+
+    other = create(:user, oidc_provisioned: true)
+    other_identity = create(:identity, user: other, provider: "homelab_oidc", uid: "b")
+    create(:identity, user: other, provider: "homelab_oidc", uid: "c")
+
+    assert_not other.reload.would_lock_out?(other_identity)
+  end
 end

@@ -38,4 +38,14 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
     assert_not_empty user.webauthn_credentials
     assert_not_empty user.push_subscriptions
   end
+
+  test "reset clears the OIDC provisioning marker" do
+    user = create(:user, oidc_provisioned: true)
+
+    put password_url(user.password_reset_token), params: {password: "new-password", password_confirmation: "new-password"}
+
+    assert_redirected_to new_session_url
+    assert_not user.reload.oidc_provisioned?
+    assert user.usable_password?
+  end
 end
