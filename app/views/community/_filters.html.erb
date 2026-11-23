@@ -5,7 +5,7 @@
         <%= f.label :user, class: "standard-label" %>
         <%= f.hidden_field :user_id, value: params[:user_id], data: { autocomplete_target: "hidden" } %>
         <%= f.search_field :user, value: params[:user], class: "mt-1 standard-input", data: { autocomplete_target: "input" } %>
-        <ul class="absolute z-10 mt-2 max-h-96 list-group overflow-y-auto rounded-md bg-white shadow-lg ring-1 ring-black/5" data-autocomplete-target="results"></ul>
+        <ul class="absolute z-10 mt-2 max-h-96 list-group overflow-y-auto rounded-md bg-white shadow-lg ring-1 ring-black/5 dark:bg-neutral-800 dark:ring-white/10" data-autocomplete-target="results"></ul>
       </div>
       <% Filterable::FILTERS.each do |filter, options| %>
         <% if options[:autocomplete] %>
@@ -15,7 +15,7 @@
               <%= f.hidden_field options[:target], value: params[options[:target]], data: { autocomplete_target: "hidden" } %>
             <% end %>
             <%= f.search_field filter, value: params[filter], class: "mt-1 standard-input", data: { autocomplete_target: "input" } %>
-            <ul class="absolute z-10 mt-2 max-h-96 list-group overflow-y-auto rounded-md bg-white shadow-lg ring-1 ring-black/5" data-autocomplete-target="results"></ul>
+            <ul class="absolute z-10 mt-2 max-h-96 list-group overflow-y-auto rounded-md bg-white shadow-lg ring-1 ring-black/5 dark:bg-neutral-800 dark:ring-white/10" data-autocomplete-target="results"></ul>
           </div>
         <% else %>
           <div class="col-span-6 md:col-span-3">

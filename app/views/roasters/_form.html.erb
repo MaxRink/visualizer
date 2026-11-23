@@ -11,7 +11,7 @@
             <%= f.label :name, class: "standard-label" %>
             <%= f.hidden_field :canonical_roaster_id, data: { autocomplete_target: "hidden", canonical_selector_target: "id" } %>
             <%= f.search_field :name, class: "#{extra_classes} mt-1 standard-input", data: { autocomplete_target: "input" } %>
-            <ul class="absolute z-10 mt-2 max-h-96 list-group overflow-y-auto rounded-md bg-white shadow-lg ring-1 ring-black/5" data-autocomplete-target="results"></ul>
+            <ul class="absolute z-10 mt-2 max-h-96 list-group overflow-y-auto rounded-md bg-white shadow-lg ring-1 ring-black/5 dark:bg-neutral-800 dark:ring-white/10" data-autocomplete-target="results"></ul>
             <% if has_error %>
               <p class="text-sm font-medium text-red-500">Name is required and has to be unique.</p>
             <% end %>

@@ -38,7 +38,6 @@ class ApplicationController < ActionController::Base
   end
 
   def set_skin
-    @skin = Current.user&.skin&.downcase || "system"
-    @skin = [@skin, cookies["browser.colorscheme"].presence].compact.join(" ") if @skin == "system"
+    @skin = Current.user&.skin&.downcase.presence || "system"
   end
 end

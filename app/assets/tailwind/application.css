@@ -20,6 +20,7 @@
   --lexxy-color-bullet: var(--color-neutral-300);
 }
 
+:root.dark,
 :root:has(body.dark) {
   color-scheme: dark;
   --lexxy-color-ink: var(--color-neutral-300);
