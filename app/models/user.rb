@@ -188,6 +188,12 @@ class User < ApplicationRecord
     premium? && (self_hosted? || journal_enabled)
   end
 
+  # Grind suggestions are an admin preview upstream. A self-hosted instance with
+  # an inference endpoint offers them to every user, like the premium features.
+  def grind_suggestions?
+    admin? || (self_hosted? && SystemOne.configured?)
+  end
+
   def can_manage_premium?
     creem_customer_id.present? || lemon_squeezy_customer_id.present?
   end

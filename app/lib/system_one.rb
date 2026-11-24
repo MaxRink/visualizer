@@ -3,12 +3,21 @@ require "net/http"
 
 class SystemOne
   class Error < StandardError; end
+  # Gateway or provider throttling that outlasted the in-request retries; the
+  # jobs retry it later instead of failing.
+  class Throttled < Error; end
 
   RETRYABLE_CODES = %w[408 429 500 502 503 504].freeze
+  THROTTLED_CODES = %w[429 503].freeze
+  ENV_KEYS = %w[VISUALIZER_INFERENCE_BASE_URL VISUALIZER_INFERENCE_MODEL VISUALIZER_INFERENCE_API_KEY].freeze
   MAX_ATTEMPTS = ENV.fetch("VISUALIZER_INFERENCE_MAX_ATTEMPTS", 3).to_i
   MAX_REQUEST_BYTES = ENV.fetch("VISUALIZER_INFERENCE_MAX_REQUEST_BYTES", 128 * 1024).to_i
   MAX_RESPONSE_BYTES = ENV.fetch("VISUALIZER_INFERENCE_MAX_RESPONSE_BYTES", 64 * 1024).to_i
   MAX_COMPLETION_TOKENS = ENV.fetch("VISUALIZER_INFERENCE_MAX_COMPLETION_TOKENS", 512).to_i
+
+  def self.configured?
+    ENV_KEYS.all? { ENV[it].present? }
+  end
 
   def initialize(api_endpoint: ENV.fetch("VISUALIZER_INFERENCE_BASE_URL"), model: ENV.fetch("VISUALIZER_INFERENCE_MODEL"), api_key: ENV.fetch("VISUALIZER_INFERENCE_API_KEY"))
     @uri = validated_uri(api_endpoint)
@@ -65,7 +74,9 @@ class SystemOne
       attempt += 1
       status, response_body = post(body)
       return JSON.parse(response_body) if status.between?(200, 299)
-      raise Error, "LiteLLM HTTP #{status}" if attempt >= MAX_ATTEMPTS || RETRYABLE_CODES.exclude?(status.to_s)
+      if attempt >= MAX_ATTEMPTS || RETRYABLE_CODES.exclude?(status.to_s)
+        raise THROTTLED_CODES.include?(status.to_s) ? Throttled : Error, "LiteLLM HTTP #{status}"
+      end
 
       sleep(2**(attempt - 1))
     rescue Net::OpenTimeout, Net::ReadTimeout, EOFError, SocketError, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EHOSTUNREACH, OpenSSL::SSL::SSLError => error

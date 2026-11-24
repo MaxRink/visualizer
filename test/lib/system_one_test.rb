@@ -76,6 +76,17 @@ class SystemOneTest < ActiveSupport::TestCase
     assert_requested(:post, ENDPOINT, times: SystemOne::MAX_ATTEMPTS)
   end
 
+  test "throttling that outlasts the retries raises Throttled for a later job retry" do
+    stub_request(:post, ENDPOINT).to_return(status: 429, body: "untrusted detail")
+    throttled = client
+    throttled.define_singleton_method(:sleep) { |_seconds| nil }
+
+    error = assert_raises(SystemOne::Throttled) { throttled.evaluate(state: {}, questions: []) }
+
+    assert_equal "LiteLLM HTTP 429", error.message
+    assert_kind_of SystemOne::Error, error
+  end
+
   private
 
   def client(api_endpoint: ENDPOINT)

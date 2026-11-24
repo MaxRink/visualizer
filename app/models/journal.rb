@@ -45,7 +45,7 @@ class Journal
     labels["private_notes"] = "Private notes"
     user.shot_metadata_fields.each { labels["metadata:#{it}"] = it.humanize }
     Shot::TASTING_ASSESSMENT_ATTRIBUTES.each { labels[it.to_s] = it.to_s.humanize }
-    labels["grind_suggestion"] = "Grind suggestion" if user.admin?
+    labels["grind_suggestion"] = "Grind suggestion" if user.grind_suggestions?
     @columns = labels
   end
 

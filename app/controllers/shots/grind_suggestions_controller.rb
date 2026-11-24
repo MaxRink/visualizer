@@ -11,7 +11,7 @@ module Shots
     ].freeze
 
     before_action :require_authentication
-    before_action :check_admin!
+    before_action :check_grind_suggestions!
 
     def create
       @shot = Current.user.shots.find(params.expect(:shot_id))

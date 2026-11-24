@@ -4,6 +4,8 @@ class PremiumFeedbackJob < ApplicationJob
   EMAIL = "cancelled_premium"
 
   def perform(*args)
+    return if User.self_hosted?
+
     expired_users_without_feedback.find_each do |user|
       UserMailer.with(user:).cancelled_premium.deliver_later
       user.communication += [EMAIL]
