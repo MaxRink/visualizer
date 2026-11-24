@@ -17,7 +17,10 @@ class CoffeeBag
     ].freeze
 
     included do
-      performs :suggest_grind
+      performs :suggest_grind do
+        limits_concurrency to: 1, key: ->(*) { "inference" }, group: "Inference", duration: 5.minutes
+        retry_on SystemOne::Throttled, wait: :polynomially_longer, attempts: 5
+      end
       after_commit :suggest_grind_later, on: %i[create update], if: :grind_suggestion_needed?
     end
 
@@ -43,7 +46,7 @@ class CoffeeBag
     private
 
     def grind_suggestion_needed?
-      user&.admin? && (previously_new_record? || saved_changes.keys.intersect?(SUMMARY_ATTRIBUTES + %w[name roaster_id]))
+      user&.grind_suggestions? && (previously_new_record? || saved_changes.keys.intersect?(SUMMARY_ATTRIBUTES + %w[name roaster_id]))
     end
 
     def recent_profiles
