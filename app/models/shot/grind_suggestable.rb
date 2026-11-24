@@ -121,8 +121,22 @@ class Shot
       end
     end
 
+    # The inference endpoint has returned answers as a plain string before, so
+    # every step is checked instead of trusting Hash#dig. A malformed payload
+    # means "no suggestion", which the UI already shows as the Suggest link.
+    def suggestion_probabilities(response)
+      answers = response.is_a?(Hash) ? response["answers"] : nil
+      adjustment = answers.is_a?(Hash) ? answers["adjustment"] : nil
+      probabilities = adjustment.is_a?(Hash) ? adjustment["probabilities"] : nil
+
+      probabilities if probabilities.is_a?(Hash)
+    end
+
     def grind_suggestion_from(response)
-      probabilities = response.dig("answers", "adjustment", "probabilities").transform_keys(&:to_i)
+      probabilities = suggestion_probabilities(response)
+      return unless probabilities
+
+      probabilities = probabilities.transform_keys(&:to_i)
       direction, probability = DIRECTION_LEVELS.transform_values { |levels| levels.sum { probabilities.fetch(it, 0) } }.max_by(&:last)
       suggestion = {
         "probability" => probability.round(2),

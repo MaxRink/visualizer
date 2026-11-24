@@ -62,7 +62,7 @@ class DisabledUserTest < ActionDispatch::IntegrationTest
     assert_not_includes response.parsed_body["data"].pluck("id"), @shot.id
 
     get shot_url(@shot)
-    assert_response :success
+    assert_response :not_found
 
     get api_shot_url(@shot), as: :json
     assert_response :success

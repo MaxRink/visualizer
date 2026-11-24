@@ -6,9 +6,16 @@
       <div class="flex min-w-full flex-col lg:flex-row">
         <h1 class="flex text-2xl leading-tight font-bold text-neutral-900 sm:text-3xl dark:text-neutral-100">
           <div class="flex gap-x-2">
-            <%= image_tag avatar_url(@shot.user, 80), alt: "Avatar", class: "rounded size-8" %>
+            <% if Current.user %>
+              <%= image_tag avatar_url(@shot.user, 80), alt: "Avatar", class: "rounded size-8" %>
+            <% end %>
             <span class="font-serif text-4xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-              Shot by <%= link_to "#{@shot.user.display_name}", person_path(@shot.user.slug), class: "underline hover:text-neutral-500" %>
+              Shot by
+              <% if Current.user && @shot.user.slug.present? %>
+                <%= link_to "#{@shot.user.display_name}", person_path(@shot.user.slug), class: "underline hover:text-neutral-500" %>
+              <% else %>
+                <%= @shot.user.display_name %>
+              <% end %>
             </span>
             <% if @shot.user.premium? %>
               <%= premium_badge_link do %>

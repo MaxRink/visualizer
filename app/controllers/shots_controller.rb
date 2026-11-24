@@ -3,9 +3,10 @@ class ShotsController < ApplicationController
   include Paginatable
   include Shots::Editing
 
-  before_action :require_authentication, except: %i[show compare share beanconqueror]
-  before_action :load_shot, only: %i[show compare share beanconqueror]
+  before_action :require_authentication, except: %i[show compare image]
+  before_action :load_shot, only: %i[show compare share beanconqueror image]
   before_action :create_shared_shot, only: %i[share beanconqueror]
+  before_action :require_viewable_shot, only: %i[show image]
   before_action :load_users_shot, only: %i[edit update remove_image destroy]
   before_action :load_coffee_bags_for_form, only: :edit
   before_action :load_users_shots, only: %i[index search]
@@ -39,6 +40,14 @@ class ShotsController < ApplicationController
   rescue ActiveRecord::RecordNotFound
     flash[:alert] = "Comparison shot not found!"
     redirect_to(@shot || :root)
+  end
+
+  # Anonymous visitors can fetch the original image of a shot they are allowed
+  # to view, so public pages do not depend on the Active Storage proxy routes.
+  def image
+    return head :not_found unless @shot.image.attached?
+
+    send_data @shot.image.download, type: @shot.image.content_type, disposition: "inline"
   end
 
   def share
@@ -159,10 +168,30 @@ class ShotsController < ApplicationController
     redirect_to :root, alert: "Shot not found!"
   end
 
+  # Signed-in users keep the old behaviour. Anonymous visitors only see shots
+  # that are public (community) or have a share row within the share TTL.
+  def require_viewable_shot
+    return if Current.user
+    return if @shot.public?
+    return if @shot.shared_shots.exists?(created_at: Limits.share_ttl.ago..)
+
+    head :not_found
+  end
+
   def load_users_shot
     @shot = Current.user.shots.with_notes.find(params[:id])
   rescue ActiveRecord::RecordNotFound
     redirect_to shots_path, alert: "Shot not found!"
+  end
+
+  # Signed-in users keep the old behaviour. Anonymous visitors only see shots
+  # that are public (community) or have a share row within the share TTL.
+  def require_viewable_shot
+    return if Current.user
+    return if @shot.public?
+    return if @shot.shared_shots.exists?(created_at: Limits.share_ttl.ago..)
+
+    head :not_found
   end
 
   def load_users_shots
@@ -193,6 +222,8 @@ class ShotsController < ApplicationController
   end
 
   def load_related_shots
+    return @related_shots = [] unless Current.user
+
     @related_shots = @shot.related_shots.pluck(:id, :profile_title, :bean_type, :start_time).reject { it[3].nil? }.sort_by { it[3] }.reverse
   end
 
@@ -213,6 +244,8 @@ class ShotsController < ApplicationController
   end
 
   def create_shared_shot
+    head :not_found unless @shot.user_id == Current.user.id
+
     @shared_shot = SharedShot.find_or_initialize_by(shot: @shot, user: Current.user)
     @shared_shot.created_at = Time.current
     @shared_shot.save!

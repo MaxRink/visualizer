@@ -29,4 +29,16 @@ class CoffeeBagScraperTest < ActiveSupport::TestCase
 
     assert_equal "crawlbase content", scraper.__send__(:page_content, "https://93.184.216.34")
   end
+
+  test "parse_bag accepts a JSON object" do
+    assert_equal({"name" => "Kenya"}, CoffeeBagScraper.parse_bag('{"name":"Kenya"}'))
+  end
+
+  test "parse_bag rejects a JSON string" do
+    assert_raises(ArgumentError) { CoffeeBagScraper.parse_bag('"plain text"') }
+  end
+
+  test "parse_bag rejects a JSON array" do
+    assert_raises(ArgumentError) { CoffeeBagScraper.parse_bag("[1, 2]") }
+  end
 end

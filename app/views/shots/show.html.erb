@@ -43,8 +43,9 @@
           <%= render "tasting_assessment", categories: tasting_assessment_categories, series: tasting_series %>
         <% end %>
         <% if show_image %>
-          <%= link_to @shot.image, target: "_blank" do %>
-            <%= image_tag @shot.image.variant(:display), class: "rounded-lg mx-auto #{'mt-3' if show_tasting_assessment}" %>
+          <% image_source = Current.user ? @shot.image.variant(:display) : shot_image_path(@shot) %>
+          <%= link_to image_source, target: "_blank" do %>
+            <%= image_tag image_source, class: "rounded-lg mx-auto #{'mt-3' if show_tasting_assessment}" %>
           <% end %>
         <% end %>
       </div>
