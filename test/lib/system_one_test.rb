@@ -11,6 +11,7 @@ class SystemOneTest < ActiveSupport::TestCase
         body["model"] == "coffee-bag-vision" &&
         body["max_tokens"] == SystemOne::MAX_COMPLETION_TOKENS &&
         body["response_format"] == {"type" => "json_object"} &&
+        body["messages"].first["content"].include?("probabilities") &&
         body["messages"].last["content"].include?("synthetic shot")
     end.to_return(status: 200, body: response)
 
