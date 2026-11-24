@@ -22,7 +22,7 @@ class SystemOne
     request_body = {
       model: @model,
       messages: [
-        {role: "system", content: "Answer the supplied espresso questions using only the supplied shot state. Return one JSON object with an answers object; do not include markdown. Each question declares a type: for \"score\" return an object with a \"probabilities\" object mapping every criterion index (as a string) to a probability between 0 and 1 that sums to 1; for \"noul\" return an object with \"noul\": true or false."},
+        {role: "system", content: "Answer the supplied espresso questions using only the supplied shot state. Return one JSON object with an answers object; do not include markdown. Each question declares a type: for \"score\" return an object with a \"probabilities\" object mapping every criterion index (as a string) to a probability between 0 and 1 that sums to 1; for \"noul\" return an object with \"noul\": a probability between 0 and 1 that the puck preparation needs attention."},
         {role: "user", content: {state:, questions:}.to_json}
       ],
       response_format: {type: "json_object"},
