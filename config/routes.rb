@@ -82,6 +82,7 @@ Rails.application.routes.draw do
     resource :grind_suggestion, only: :create, module: :shots
     member do
       delete :remove_image
+      get :image
       get :share
       get :beanconqueror
       get "/compare/:comparison", to: "shots#compare"
