@@ -68,7 +68,7 @@ class SystemOne
       raise Error, "LiteLLM HTTP #{status}" if attempt >= MAX_ATTEMPTS || RETRYABLE_CODES.exclude?(status.to_s)
 
       sleep(2**(attempt - 1))
-    rescue Net::OpenTimeout, Net::ReadTimeout, EOFError, SocketError => error
+    rescue Net::OpenTimeout, Net::ReadTimeout, EOFError, SocketError, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EHOSTUNREACH, OpenSSL::SSL::SSLError => error
       raise Error, "LiteLLM request failed (#{error.class})" if attempt >= MAX_ATTEMPTS
 
       sleep(2**(attempt - 1))

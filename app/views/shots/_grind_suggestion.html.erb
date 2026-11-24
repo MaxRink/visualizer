@@ -5,4 +5,7 @@
   <% elsif shot.duration.to_f.positive? %>
     (<%= link_to "Suggest grind", shot_grind_suggestion_path(shot), data: {turbo_method: :post}, class: "standard-link" %>)
   <% end %>
+  <% if local_assigns[:notice].present? %>
+    <span class="text-xs text-neutral-500 dark:text-neutral-400"><%= notice %></span>
+  <% end %>
 </span>
