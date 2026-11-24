@@ -19,6 +19,29 @@ class OpenAiTest < ActiveSupport::TestCase
     end
   end
 
+  test "retries a throttled gateway response and returns the answer" do
+    with_env("OPENAI_API_KEY" => "synthetic-key", "OPENAI_BASE_URL" => "http://10.255.255.254:30681/v1") do
+      request = stub_request(:post, "http://10.255.255.254:30681/v1/chat/completions")
+        .to_return({status: 429, body: "rate limited"}, {status: 200, body: {choices: [{message: {content: '{"name":"Kenya"}'}}]}.to_json})
+      client = OpenAi.new
+      client.define_singleton_method(:sleep) { |_seconds| nil }
+
+      assert_equal '{"name":"Kenya"}', client.message("page text")
+      assert_requested(request, times: 2)
+    end
+  end
+
+  test "does not retry a client error" do
+    with_env("OPENAI_API_KEY" => "synthetic-key", "OPENAI_BASE_URL" => "http://10.255.255.254:30681/v1") do
+      request = stub_request(:post, "http://10.255.255.254:30681/v1/chat/completions").to_return(status: 400, body: "bad request")
+
+      error = assert_raises(RuntimeError) { OpenAi.new.message("page text") }
+
+      assert_match "400", error.message
+      assert_requested(request, times: 1)
+    end
+  end
+
   private
 
   def without_env

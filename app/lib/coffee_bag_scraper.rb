@@ -1,18 +1,27 @@
+require "open3"
 require "resolv"
 
 class CoffeeBagScraper
   class NotConfigured < StandardError; end
+  class Unavailable < StandardError; end
+
+  Page = Data.define(:status, :body, :location)
 
   BLOCK_PATTERNS = [
     /your access to this site has been limited/i,
     /access from your area has been temporarily limited/i
   ].freeze
-  BLOCKED_RESPONSE_CLASSES = [Net::HTTPTooManyRequests].freeze
+  BLOCKED_STATUSES = [403, 429].freeze
+  MIN_CONTENT_SIZE = 100
+  MAX_CONTENT_SIZE = 20_000
+  MAX_PAGE_BYTES = 5 * 1024 * 1024
+  FETCH_TIMEOUT = 20
+  STRUCTURED_META = "meta[property^='og:'], meta[property^='product:'], meta[name='description']".freeze
 
   attr_reader :user, :url, :request_id
 
-  # Crawlbase is only the fallback for blocked pages; the OpenAI key is what
-  # the lookup cannot work without.
+  # Crawlbase is an optional fallback for blocked pages; the OpenAI key is
+  # what the lookup cannot work without.
   def self.crawlbase_token
     ENV["CRAWLBASE_TOKEN"].presence || Rails.application.credentials.dig(:crawlbase, :token).presence
   end
@@ -57,27 +66,20 @@ class CoffeeBagScraper
     uri = URI.parse(url)
     raise ArgumentError, "URL must be an HTTP or HTTPS URL" unless uri.is_a?(URI::HTTP) && uri.host.present?
 
-    response = get_response(uri)
-    if response.nil? || is_blocked?(response)
-      crawlbase_content(url)
-    elsif response.is_a?(Net::HTTPRedirection)
-      redirected_url = URI.join(url, response["location"]).to_s
-      page_content(redirected_url, limit - 1)
+    page = fetch(uri, public_address(uri.host))
+    if page&.status&.between?(300, 399) && page.location.present?
+      page_content(URI.join(url, page.location).to_s, limit - 1)
     else
-      content = extract_content(response)
-      content.size < 100 ? crawlbase_content(url) : content
+      usable_content(page) || crawlbase_content(url, page)
     end
   end
 
-  def get_response(uri)
-    addresses = Resolv.getaddresses(uri.host)
-    raise ArgumentError, "URL must resolve to a public IP address" if addresses.empty? || addresses.any? { private_address?(it) }
+  def public_address(host)
+    addresses = Resolv.getaddresses(host)
+    raise Unavailable, "The coffee page's address could not be resolved." if addresses.empty?
+    raise ArgumentError, "URL must resolve to a public IP address" if addresses.any? { private_address?(it) }
 
-    Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", ipaddr: addresses.first, open_timeout: 10) do |http|
-      http.get(uri.request_uri)
-    end
-  rescue Net::OpenTimeout
-    nil
+    addresses.find { IPAddr.new(it).ipv4? } || addresses.first
   end
 
   def private_address?(address)
@@ -85,29 +87,67 @@ class CoffeeBagScraper
     ip.private? || ip.loopback? || ip.link_local? || ip.multicast? || ip.to_i.zero?
   end
 
-  def crawlbase_content(url)
+  # curl instead of Net::HTTP: shops behind Shopify's bot protection answer
+  # every HTTP/1.1 request with 429, and Net::HTTP cannot speak HTTP/2. The
+  # connection is pinned to the address checked above (no DNS rebinding) and
+  # redirects are followed by page_content, so each hop is checked again.
+  def fetch(uri, address)
+    pinned = address.include?(":") ? "[#{address}]" : address
+    Tempfile.create("coffee-bag-page") do |file|
+      stdout, _stderr, status = Open3.capture3(
+        "curl", "--silent", "--http2", "--compressed", "--proto", "=http,https",
+        "--connect-timeout", "10", "--max-time", FETCH_TIMEOUT.to_s, "--max-filesize", MAX_PAGE_BYTES.to_s,
+        "--resolve", "#{uri.host}:#{uri.port}:#{pinned}", "--output", file.path,
+        "--write-out", "%{http_code} %{redirect_url}", uri.to_s
+      )
+      next unless status.success?
+
+      code, location = stdout.split(" ", 2)
+      Page.new(status: code.to_i, body: File.binread(file.path), location: location.to_s.strip.presence)
+    end
+  end
+
+  def usable_content(page)
+    return if page.nil? || blocked?(page)
+    raise Unavailable, "Failed to fetch the page (HTTP #{page.status})." unless page.status.between?(200, 299)
+
+    content = extract_content(page.body)
+    content if content.size >= MIN_CONTENT_SIZE
+  end
+
+  def crawlbase_content(url, page)
     token = self.class.crawlbase_token
-    raise NotConfigured, "Coffee info lookup is not configured on this instance." if token.blank?
+    raise Unavailable, unavailable_message(page) if token.blank?
 
     run_step("retrying") do
       response = SimpleDownloader.new("https://api.crawlbase.com/?token=#{token}&url=#{CGI.escape(url)}").response
-      extract_content(response)
+      raise Unavailable, "Failed to fetch the page (HTTP #{response.code})." unless response.is_a?(Net::HTTPSuccess)
+
+      extract_content(response.body)
     end
   end
 
-  def extract_content(response)
-    if response.is_a?(Net::HTTPSuccess)
-      doc = Nokogiri::HTML(response.body)
-      doc.search("script, style, svg, img").remove
-      doc.text.squish
+  def unavailable_message(page)
+    if page.nil?
+      "The coffee page did not respond. Try again later or enter the details manually."
+    elsif blocked?(page)
+      "The roaster's website blocked the lookup (HTTP #{page.status}). Enter the details manually."
     else
-      raise "Failed to fetch page: #{response.code} #{response.message}"
+      "The page has no readable coffee details. Enter the details manually."
     end
   end
 
-  def is_blocked?(response)
-    body = response.body.to_s
-    BLOCKED_RESPONSE_CLASSES.any? { |response_class| response.is_a?(response_class) } ||
-      BLOCK_PATTERNS.any? { |pattern| body.match?(pattern) }
+  # Product pages that render in JavaScript still carry JSON-LD and Open Graph
+  # data, so those go first; the visible text follows.
+  def extract_content(body)
+    doc = Nokogiri::HTML(body)
+    structured = doc.css("script[type='application/ld+json']").map { it.text.squish }.select { it.include?("Product") }
+    meta = doc.css(STRUCTURED_META).filter_map { "#{it["property"] || it["name"]}: #{it["content"].squish}" if it["content"].present? }
+    doc.search("script, style, svg, img").remove
+    [*structured, *meta, doc.text.squish].compact_blank.join("\n").truncate(MAX_CONTENT_SIZE)
+  end
+
+  def blocked?(page)
+    BLOCKED_STATUSES.include?(page.status) || BLOCK_PATTERNS.any? { page.body.to_s.match?(it) }
   end
 end

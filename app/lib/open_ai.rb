@@ -8,6 +8,10 @@ class OpenAi
   DEFAULT_BASE_URL = "http://192.168.1.104:30681/v1".freeze
   DEFAULT_MODEL = "auto/fast".freeze
   SYSTEM_PROMPT = Rails.root.join("app/prompts/coffee_bag_scraper.txt").read.freeze
+  # Gateway throttling (429), provider overload (503/529) and short outages are
+  # retried with a growing pause; anything else fails at once.
+  RETRYABLE_CODES = %w[429 500 502 503 504 529].freeze
+  MAX_ATTEMPTS = 3
 
   def self.api_key
     ENV["OPENAI_API_KEY"].presence || Rails.application.credentials.dig(:open_ai, :api_key).presence
@@ -57,8 +61,9 @@ class OpenAi
 
     JSON.parse(response.body).dig("choices", 0, "message", "content").to_s
   rescue StandardError
-    raise if attempt >= 3 || response&.code != "529"
+    raise if attempt >= MAX_ATTEMPTS || RETRYABLE_CODES.exclude?(response&.code)
 
+    sleep(2**attempt)
     attempt += 1
     retry
   end
