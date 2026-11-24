@@ -43,7 +43,7 @@ class OpenAi
       max_tokens: 500,
       messages: [
         {role: "system", content: SYSTEM_PROMPT},
-        {role: "user", content: content}
+        {role: "user", content:}
       ]
     }.to_json
 
