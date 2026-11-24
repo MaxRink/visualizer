@@ -1,8 +1,12 @@
 class OpenAi
   class NotConfigured < StandardError; end
 
-  API_ENDPOINT = "https://api.openai.com/v1/responses".freeze
-  MODEL = "gpt-6-luna".freeze
+  # AI calls in this deployment go through the LiteLLM gateway. The base URL
+  # and model stay configurable so a vanilla instance can point elsewhere
+  # (e.g. https://api.openai.com/v1); the key stays optional, and without it
+  # the lookup reports NotConfigured and the UI hides the button.
+  DEFAULT_BASE_URL = "http://192.168.1.104:30681/v1".freeze
+  DEFAULT_MODEL = "auto/fast".freeze
   SYSTEM_PROMPT = Rails.root.join("app/prompts/coffee_bag_scraper.txt").read.freeze
 
   def self.api_key
@@ -13,22 +17,33 @@ class OpenAi
     api_key.present?
   end
 
+  def self.base_url
+    ENV["OPENAI_BASE_URL"].presence || DEFAULT_BASE_URL
+  end
+
+  def self.model
+    ENV["OPENAI_MODEL"].presence || DEFAULT_MODEL
+  end
+
+  def self.endpoint
+    "#{base_url.chomp("/")}/chat/completions"
+  end
+
   def message(content, attempt: 1)
     raise NotConfigured, "Coffee info lookup is not configured on this instance." unless self.class.configured?
 
-    uri = URI(API_ENDPOINT)
+    uri = URI(self.class.endpoint)
     http = Net::HTTP.new(uri.host, uri.port)
-    http.use_ssl = true
+    http.use_ssl = uri.scheme == "https"
     request = Net::HTTP::Post.new(uri.request_uri)
     request["Authorization"] = "Bearer #{self.class.api_key}"
     request["Content-Type"] = "application/json"
     request.body = {
-      model: MODEL,
-      max_output_tokens: 500,
-      reasoning: {effort: "none"},
-      input: [
+      model: self.class.model,
+      max_tokens: 500,
+      messages: [
         {role: "system", content: SYSTEM_PROMPT},
-        {role: "user", content:}
+        {role: "user", content: content}
       ]
     }.to_json
 
@@ -37,11 +52,10 @@ class OpenAi
       details = response.body.presence || response.message
       request_id = response["x-request-id"]
       suffix = request_id.present? ? " (request_id: #{request_id})" : ""
-      raise "Failed to get response from OpenAI: #{response.code} #{details}#{suffix}"
+      raise "Failed to get an inference response: #{response.code} #{details}#{suffix}"
     end
 
-    model_response = JSON.parse(response.body)
-    model_response["output"].filter_map { it["content"] }.first.first["text"]
+    JSON.parse(response.body).dig("choices", 0, "message", "content").to_s
   rescue StandardError
     raise if attempt >= 3 || response&.code != "529"
 
