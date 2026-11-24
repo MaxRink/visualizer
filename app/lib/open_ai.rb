@@ -1,15 +1,26 @@
 class OpenAi
+  class NotConfigured < StandardError; end
+
   API_ENDPOINT = "https://api.openai.com/v1/responses".freeze
-  API_KEY = Rails.application.credentials.dig(:open_ai, :api_key)
   MODEL = "gpt-6-luna".freeze
   SYSTEM_PROMPT = Rails.root.join("app/prompts/coffee_bag_scraper.txt").read.freeze
 
+  def self.api_key
+    ENV["OPENAI_API_KEY"].presence || Rails.application.credentials.dig(:open_ai, :api_key).presence
+  end
+
+  def self.configured?
+    api_key.present?
+  end
+
   def message(content, attempt: 1)
+    raise NotConfigured, "Coffee info lookup is not configured on this instance." unless self.class.configured?
+
     uri = URI(API_ENDPOINT)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
     request = Net::HTTP::Post.new(uri.request_uri)
-    request["Authorization"] = "Bearer #{API_KEY}"
+    request["Authorization"] = "Bearer #{self.class.api_key}"
     request["Content-Type"] = "application/json"
     request.body = {
       model: MODEL,

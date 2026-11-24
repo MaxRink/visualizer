@@ -41,4 +41,55 @@ class CoffeeBagScraperTest < ActiveSupport::TestCase
   test "parse_bag rejects a JSON array" do
     assert_raises(ArgumentError) { CoffeeBagScraper.parse_bag("[1, 2]") }
   end
+
+  test "raises NotConfigured when the lookup is not configured" do
+    without_env do
+      assert_raises(CoffeeBagScraper::NotConfigured) do
+        CoffeeBagScraper.new(create(:user), "https://example.com", "request-id").scrape
+      end
+    end
+  end
+
+  test "uses environment keys and the downloader without network" do
+    with_env("CRAWLBASE_TOKEN" => "crawlbase-token", "OPENAI_API_KEY" => "openai-key") do
+      scraper = CoffeeBagScraper.new(create(:user), "https://example.com", "request-id")
+      scraper.define_singleton_method(:page_content) { |*, **| "page text" }
+      fake = Object.new
+      fake.define_singleton_method(:message) { |*| '{"name":"Kenya"}' }
+      original = OpenAi.method(:new)
+      OpenAi.define_singleton_method(:new) { |**| fake }
+
+      assert_equal({"name" => "Kenya"}, scraper.scrape)
+    ensure
+      OpenAi.define_singleton_method(:new, original)
+    end
+  end
+
+  test "the scrape job broadcasts the actionable message when not configured" do
+    user = create(:user)
+
+    assert_broadcast_on(CoffeeBagScraperChannel.broadcasting_for(user), {request_id: "request-id", error: "Coffee info lookup is not configured on this instance."}) do
+      without_env { CoffeeBagScrapeJob.perform_now(user, "https://example.com", "request-id") }
+    end
+  end
+
+  private
+
+  ENV_KEYS = %w[CRAWLBASE_TOKEN OPENAI_API_KEY].freeze
+
+  def without_env
+    previous = ENV_KEYS.index_with { |key| ENV[key] }
+    ENV_KEYS.each { |key| ENV.delete(key) }
+    yield
+  ensure
+    previous.each { |key, value| ENV[key] = value }
+  end
+
+  def with_env(values)
+    previous = values.keys.index_with { |key| ENV[key] }
+    values.each { |key, value| ENV[key] = value }
+    yield
+  ensure
+    previous.each { |key, value| ENV[key] = value }
+  end
 end
