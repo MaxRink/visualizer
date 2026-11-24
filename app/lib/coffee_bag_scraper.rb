@@ -1,6 +1,8 @@
 require "resolv"
 
 class CoffeeBagScraper
+  class NotConfigured < StandardError; end
+
   BLOCK_PATTERNS = [
     /your access to this site has been limited/i,
     /access from your area has been temporarily limited/i
@@ -9,6 +11,16 @@ class CoffeeBagScraper
 
   attr_reader :user, :url, :request_id
 
+  # Crawlbase is only the fallback for blocked pages; the OpenAI key is what
+  # the lookup cannot work without.
+  def self.crawlbase_token
+    ENV["CRAWLBASE_TOKEN"].presence || Rails.application.credentials.dig(:crawlbase, :token).presence
+  end
+
+  def self.configured?
+    OpenAi.configured?
+  end
+
   def initialize(user, url, request_id)
     @user = user
     @url = url
@@ -16,6 +28,8 @@ class CoffeeBagScraper
   end
 
   def scrape
+    raise NotConfigured, "Coffee info lookup is not configured on this instance." unless self.class.configured?
+
     run_step("fetching") { page_content(url) }
       .then { |content| run_step("extracting") { OpenAi.new.message(content) } }
       .then { |response| run_step("finalizing") { self.class.parse_bag(response) } }
@@ -72,8 +86,11 @@ class CoffeeBagScraper
   end
 
   def crawlbase_content(url)
+    token = self.class.crawlbase_token
+    raise NotConfigured, "Coffee info lookup is not configured on this instance." if token.blank?
+
     run_step("retrying") do
-      response = SimpleDownloader.new("https://api.crawlbase.com/?token=#{Rails.application.credentials.crawlbase.token}&url=#{CGI.escape(url)}").response
+      response = SimpleDownloader.new("https://api.crawlbase.com/?token=#{token}&url=#{CGI.escape(url)}").response
       extract_content(response)
     end
   end

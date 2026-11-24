@@ -6,7 +6,9 @@ class LemonSqueezyWebhookHandler
   def initialize(request)
     payload = request.body.read
     signature = request.headers["X-Signature"]
-    secret = Rails.application.credentials.lemon_squeezy&.webhook_secret
+    secret = LemonSqueezy.webhook_secret
+    raise LemonSqueezy::NotConfigured, "Billing is not configured on this instance." if secret.blank?
+
     digest = OpenSSL::HMAC.hexdigest("SHA256", secret, payload)
     raise LemonSqueezy::SignatureVerificationError unless ActiveSupport::SecurityUtils.secure_compare(digest, signature)
 

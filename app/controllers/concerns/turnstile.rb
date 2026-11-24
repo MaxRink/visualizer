@@ -9,6 +9,11 @@ module Turnstile
     # who still want the external challenge.
     return true if User.self_hosted? && ENV.fetch("SELF_HOSTED_REQUIRE_TURNSTILE", "false") != "true"
 
+    unless TurnstileConfig.configured?
+      Rails.logger.warn("Turnstile is not configured; rejecting registration verification")
+      return false
+    end
+
     response = Net::HTTP.post(TURNSTILE_URI, turnstile_params.to_json, "Content-Type" => "application/json")
     JSON.parse(response.body)["success"] == true
   end
@@ -17,7 +22,7 @@ module Turnstile
 
   def turnstile_params
     {
-      secret: Rails.application.credentials.dig(:cloudflare, :secret_key),
+      secret: TurnstileConfig.secret_key,
       response: params["cf-turnstile-response"],
       remoteip: request.remote_ip
     }

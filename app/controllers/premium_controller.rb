@@ -26,10 +26,12 @@ class PremiumController < ApplicationController
   end
 
   def create
+    return redirect_to premium_index_path, alert: "Billing is not configured on this instance." unless Creem.configured?
+
     if Current.user.premium_expires_at&.future?
       redirect_to manage_premium_index_path
     else
-      product_id = Current.user.premium_expires_at.present? ? Rails.application.credentials.creem.product_id : Rails.application.credentials.creem.product_id_trial
+      product_id = Current.user.premium_expires_at.present? ? Creem.product_id : Creem.product_id_trial
       data = {
         product_id:,
         success_url: success_premium_index_url,
@@ -46,9 +48,13 @@ class PremiumController < ApplicationController
     if !Current.user.can_manage_premium?
       redirect_to shots_path, flash: {alert: "You don't have a Premium subscription. Please subscribe first."}
     elsif Current.user.creem_customer_id.present?
+      return redirect_to premium_index_path, alert: "Billing is not configured on this instance." unless Creem.configured?
+
       portal = Creem.new.create_customer_portal(Current.user.creem_customer_id)
       redirect_to portal["customer_portal_link"], allow_other_host: true
     else
+      return redirect_to premium_index_path, alert: "Billing is not configured on this instance." unless LemonSqueezy.configured?
+
       customer = LemonSqueezy.new.get_customer(Current.user.lemon_squeezy_customer_id)
       redirect_to customer.dig("data", "attributes", "urls", "customer_portal"), allow_other_host: true
     end

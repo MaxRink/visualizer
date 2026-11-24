@@ -74,7 +74,7 @@ Rails.application.configure do
     }
   else
     config.action_mailer.delivery_method = :postmark
-    config.action_mailer.postmark_settings = {api_token: Rails.application.credentials.postmark&.api_token}
+    config.action_mailer.postmark_settings = {api_token: ENV["POSTMARK_API_TOKEN"].presence || Rails.application.credentials.dig(:postmark, :api_token).presence}
   end
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to

@@ -218,11 +218,11 @@ class User < ApplicationRecord
   end
 
   def self.airtable_configured?
-    Rails.application.credentials.dig(:airtable, :client_id).present? && Rails.application.credentials.dig(:airtable, :client_secret).present?
+    AirtableConfig.configured?
   end
 
   def self.web_push_configured?
-    Rails.application.credentials.webpush&.public_key.present?
+    WebPushConfig.configured?
   end
 
   def wants_fahrenheit?

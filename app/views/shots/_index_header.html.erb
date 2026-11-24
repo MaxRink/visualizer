@@ -12,7 +12,7 @@
     </h1>
   </div>
   <div class="flex shrink-0 <%= journal_view? ? 'justify-end' : 'justify-between' %>">
-    <div class="flex gap-2" data-controller="push-notifications" data-push-notifications-vapid-key-value="<%= Rails.application.credentials.webpush&.public_key&.tr("_-", "/+") %>">
+    <div class="flex gap-2" data-controller="push-notifications" data-push-notifications-vapid-key-value="<%= WebPushConfig.public_key&.tr("_-", "/+") %>">
       <% if Current.user.premium? || !Current.user.journal_enabled %>
         <%= form_with url: journal_path, method: journal_view? ? :delete : :post, class: "hidden items-center gap-2 sm:flex", data: {turbo: Current.user.premium?, controller: "search", search_target: "form", action: "change->search#submit"} do |f| %>
           <%= f.label :journal, title: "Journal view", class: "cursor-pointer text-neutral-500 dark:text-neutral-400" do %>

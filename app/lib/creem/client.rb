@@ -7,7 +7,9 @@ class Creem
     attr_reader :api_key, :uri, :request_class, :data, :params
 
     def initialize(path, method: :get, data: nil, params: {})
-      @api_key = Rails.application.credentials.creem.api_key
+      @api_key = Creem.api_key
+      raise Creem::NotConfigured, "Billing is not configured on this instance." if @api_key.blank?
+
       @uri = URI.parse(BASE_URL + path)
       @request_class = Net::HTTP.const_get(method.to_s.capitalize)
       @data = data
