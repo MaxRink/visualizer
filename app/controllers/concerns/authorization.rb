@@ -13,6 +13,10 @@ module Authorization
     redirect_to shots_path unless Current.user.admin?
   end
 
+  def check_grind_suggestions!
+    redirect_to shots_path unless Current.user.grind_suggestions?
+  end
+
   def check_premium!
     return if Current.user.premium?
 

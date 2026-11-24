@@ -63,6 +63,25 @@ class Shots::GrindSuggestionsControllerTest < ActionDispatch::IntegrationTest
     assert_nil shot.reload.grind_suggestion
   end
 
+  test "self-hosted non-admins with inference configured reach the action" do
+    user = create(:user)
+    shot = create(:shot, user:, duration: 30)
+    env = {"VISUALIZER_SELF_HOSTED" => "true", "VISUALIZER_INFERENCE_BASE_URL" => "http://10.255.255.254:30681/v1/chat/completions",
+           "VISUALIZER_INFERENCE_MODEL" => "auto/fast", "VISUALIZER_INFERENCE_API_KEY" => "synthetic-key"}
+    previous = env.keys.index_with { ENV[it] }
+    env.each { |key, value| ENV[key] = value }
+    sign_in user
+
+    with_system_one(SystemOne::Throttled.new("LiteLLM HTTP 429")) do
+      post shot_grind_suggestion_path(shot), as: :turbo_stream
+    end
+
+    assert_response :success
+    assert_includes response.body, "Grind suggestions are unavailable right now"
+  ensure
+    previous&.each { |key, value| ENV[key] = value }
+  end
+
   private
 
   def assert_unavailable(error, log_fragment)

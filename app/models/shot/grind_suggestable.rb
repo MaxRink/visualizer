@@ -52,7 +52,7 @@ class Shot
     end
 
     def grind_suggestion_needed?
-      user&.admin? && duration.to_f.positive? && (previously_new_record? || saved_changes.keys.intersect?(DIAL_IN_ATTRIBUTES) || espresso_notes_saved?)
+      user&.grind_suggestions? && duration.to_f.positive? && (previously_new_record? || saved_changes.keys.intersect?(DIAL_IN_ATTRIBUTES) || espresso_notes_saved?)
     end
 
     def espresso_notes_saved?
