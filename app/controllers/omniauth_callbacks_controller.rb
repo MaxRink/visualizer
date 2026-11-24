@@ -71,6 +71,22 @@ class OmniauthCallbacksController < ApplicationController
     render plain: "", status: :method_not_allowed, content_type: "text/plain"
   end
 
+  # GET is not a valid OmniAuth initiation (POST only). With the provider
+  # registered the middleware intercepts the POST; this action is only reached
+  # when Airtable is not configured, where 404 is the honest answer.
+  def airtable_method_not_allowed
+    return head :not_found unless AirtableConfig.configured?
+
+    response.set_header("Allow", "POST")
+    render plain: "", status: :method_not_allowed, content_type: "text/plain"
+  end
+
+  # Reached only when the OIDC provider is not registered; with it registered
+  # the middleware handles the POST before routing.
+  def homelab_oidc_unavailable
+    head :not_found
+  end
+
   private
 
   def oidc_failure(message)
