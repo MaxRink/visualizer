@@ -5,6 +5,8 @@ class WebhookController < ApplicationController
   def lemon_squeezy
     LemonSqueezyWebhookHandler.new(request).handle
     head :ok
+  rescue LemonSqueezy::NotConfigured
+    head :not_found
   rescue JSON::ParserError, LemonSqueezy::SignatureVerificationError
     head :bad_request
   end
@@ -12,6 +14,8 @@ class WebhookController < ApplicationController
   def creem
     CreemWebhookHandler.new(request).handle
     head :ok
+  rescue Creem::NotConfigured
+    head :not_found
   rescue JSON::ParserError, Creem::SignatureVerificationError, Creem::UserNotFoundError => e
     Appsignal.report_error(e) { Appsignal.add_tags(webhook_id: params["id"]) }
     head :bad_request

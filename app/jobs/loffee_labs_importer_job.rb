@@ -6,6 +6,10 @@ class LoffeeLabsImporterJob < ApplicationJob
   BASE_URL = "https://beta.loffeelabs.com/api/v2".freeze
   ROASTERS_URL = "#{BASE_URL}/roasters".freeze
   BEANS_BULK_URL = "#{BASE_URL}/beans/bulk".freeze
+
+  def self.api_key
+    ENV["LOFFEE_LABS_API_KEY"].presence || Rails.application.credentials.dig(:loffee_labs, :api_key).presence
+  end
   ROASTER_JSON_MAPPING = {name: "roaster", website: "link", country: "country", address: "locality"}.freeze
   COFFEE_BAG_JSON_MAPPING = {
     name: "roast-name",
@@ -24,6 +28,8 @@ class LoffeeLabsImporterJob < ApplicationJob
   EXCLUDED_URLS_REGEX = Regexp.union(%w[airworkscoffee.com thebeanarchives.com mystery.coffee])
 
   def perform(cut_off: 3.months.ago)
+    return if self.class.api_key.blank?
+
     @cut_off = cut_off
     @roasters = {}
     import_roasters
@@ -43,7 +49,7 @@ class LoffeeLabsImporterJob < ApplicationJob
   end
 
   def import_beans
-    json = JSON.parse(SimpleDownloader.new(BEANS_BULK_URL, headers: {"Authorization" => "Bearer #{Rails.application.credentials.dig(:loffee_labs, :api_key)}"}).body)
+    json = JSON.parse(SimpleDownloader.new(BEANS_BULK_URL, headers: {"Authorization" => "Bearer #{self.class.api_key}"}).body)
     json["beans"].each { import_bean(it) } if json.key?("beans") && json["beans"].is_a?(Array)
   end
 

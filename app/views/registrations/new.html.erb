@@ -13,7 +13,7 @@
   end
 %>
 <% self_hosted = User.self_hosted? %>
-<%= tag.div class: "flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8", data: (self_hosted ? {} : { controller: "turnstile", turnstile_site_key_value: Rails.application.credentials.dig(:cloudflare, :site_key) }) do %>
+<%= tag.div class: "flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8", data: (self_hosted ? {} : { controller: "turnstile", turnstile_site_key_value: TurnstileConfig.site_key }) do %>
   <div class="w-full max-w-md space-y-8">
     <div>
       <%= inline_svg_tag "logo.svg", class: "w-auto h-16 mx-auto fill-current text-neutral-900 dark:text-neutral-200" %>

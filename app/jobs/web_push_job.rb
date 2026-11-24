@@ -4,6 +4,7 @@ class WebPushJob < ApplicationJob
 
   def perform(push_subscription, title:, body:, path: "/")
     return push_subscription.destroy unless push_subscription.valid?
+    return unless WebPushConfig.configured?
 
     WebPush.payload_send(
       message: {title:, body:, data: {path:}}.to_json,
@@ -12,8 +13,8 @@ class WebPushJob < ApplicationJob
       auth: push_subscription.auth_key,
       vapid: {
         subject: Instance.url,
-        public_key: Rails.application.credentials.webpush.public_key,
-        private_key: Rails.application.credentials.webpush.private_key
+        public_key: WebPushConfig.public_key,
+        private_key: WebPushConfig.private_key
       },
       open_timeout: 5,
       read_timeout: 10,

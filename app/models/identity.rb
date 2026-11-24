@@ -65,11 +65,7 @@ class Identity < ApplicationRecord
   def strategy
     case provider
     when "airtable"
-      OmniAuth::Strategies::Airtable.new(
-        nil,
-        Rails.application.credentials.dig(:airtable, :client_id),
-        Rails.application.credentials.dig(:airtable, :client_secret)
-      )
+      OmniAuth::Strategies::Airtable.new(nil, AirtableConfig.client_id, AirtableConfig.client_secret)
     else
       raise "Unknown provider: #{provider}"
     end

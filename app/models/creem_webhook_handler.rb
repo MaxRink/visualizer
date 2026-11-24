@@ -68,8 +68,9 @@ class CreemWebhookHandler
   end
 
   def valid_signature?(payload, signature)
-    secret = Rails.application.credentials.creem.webhook_secret
-    return false if secret.blank? || signature.blank?
+    secret = Creem.webhook_secret
+    raise Creem::NotConfigured, "Billing is not configured on this instance." if secret.blank?
+    return false if signature.blank?
 
     digest = OpenSSL::HMAC.hexdigest("SHA256", secret, payload)
     ActiveSupport::SecurityUtils.secure_compare(digest, signature)

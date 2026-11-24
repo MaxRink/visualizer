@@ -26,7 +26,7 @@
         <% end %>
       </div>
       <% if User.web_push_configured? %>
-      <div class="py-6" data-controller="push-notifications" data-push-notifications-vapid-key-value="<%= Rails.application.credentials.webpush&.public_key&.tr("_-", "/+") %>">
+      <div class="py-6" data-controller="push-notifications" data-push-notifications-vapid-key-value="<%= WebPushConfig.public_key&.tr("_-", "/+") %>">
         <h3 class="text-lg leading-6 font-medium text-neutral-900 dark:text-neutral-100" data-push-notifications-target="statusHeading">…</h3>
         <div class="flex items-center gap-2">
           <button class="button-white hidden! px-3 py-2" data-action="click->push-notifications#attemptToSubscribe" data-push-notifications-target="bell">
