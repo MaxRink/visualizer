@@ -21,6 +21,13 @@ class SystemOneTest < ActiveSupport::TestCase
     assert_equal({"type" => "score", "probabilities" => {"1" => 1.0}}, result.dig("answers", "relative_0"))
   end
 
+  test "rejects a response whose answers is not an object" do
+    response = {choices: [{message: {content: {answers: "plain text"}.to_json}}]}.to_json
+    stub_request(:post, ENDPOINT).to_return(status: 200, body: response)
+
+    assert_raises(SystemOne::Error) { client.evaluate(state: {}, questions: []) }
+  end
+
   test "rejects public plain HTTP and URL credentials or query strings" do
     [
       "http://example.com/v1/chat/completions",

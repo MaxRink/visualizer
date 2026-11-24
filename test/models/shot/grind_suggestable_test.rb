@@ -85,6 +85,50 @@ class Shot::GrindSuggestableTest < ActiveSupport::TestCase
     create(:shot, user: @user, bean_brand: "Roaster", bean_type: "Ethiopia", profile_title: "Adaptive", grinder_model: "Niche", **attributes)
   end
 
+  test "ignores a plain string answers payload" do
+    shot = create_shot(grinder_setting: "18", duration: 15)
+
+    with_evaluate({"answers" => "plain text", "model" => "model"}) { shot.suggest_grind_now }
+
+    assert_nil shot.reload.grind_suggestion
+  end
+
+  test "ignores a nil payload" do
+    shot = create_shot(grinder_setting: "18", duration: 15)
+
+    with_evaluate(nil) { shot.suggest_grind_now }
+
+    assert_nil shot.reload.grind_suggestion
+  end
+
+  test "ignores a payload that parses to a non-hash" do
+    shot = create_shot(grinder_setting: "18", duration: 15)
+
+    with_evaluate(JSON.parse("[1, 2]")) { shot.suggest_grind_now }
+
+    assert_nil shot.reload.grind_suggestion
+  end
+
+  test "accepts a well-formed answers hash" do
+    shot = create_shot(grinder_setting: "18", duration: 15)
+
+    with_evaluate({"answers" => {"adjustment" => {"probabilities" => {"1" => 0.9}}, "puck_issue" => {"noul" => 0.1}}, "model" => "model"}) do
+      shot.suggest_grind_now
+    end
+
+    assert_equal "Finer", shot.reload.grind_suggestion["label"]
+  end
+
+  def with_evaluate(result)
+    original = SystemOne.method(:new)
+    fake = Object.new
+    fake.define_singleton_method(:evaluate) { |**| result }
+    SystemOne.define_singleton_method(:new) { |**| fake }
+    yield
+  ensure
+    SystemOne.define_singleton_method(:new, original)
+  end
+
   def stub_shot_system_one(probabilities)
     probabilities = (0..6).to_h { [it.to_s, probabilities.fetch(it, 0.0)] }
     stub_system_one(adjustment: {type: "score", probabilities:}, puck_issue: {type: "noul", noul: 0.1})

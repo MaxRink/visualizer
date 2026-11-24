@@ -33,7 +33,7 @@ class SystemOne
 
     response = request_with_retry(request_body)
     result = JSON.parse(response.dig("choices", 0, "message", "content"))
-    raise Error, "LiteLLM response did not include answers" unless result["answers"].is_a?(Hash)
+    raise Error, "LiteLLM response did not include answers" unless result.is_a?(Hash) && result["answers"].is_a?(Hash)
 
     result.merge("model" => @model)
   rescue JSON::ParserError, TypeError

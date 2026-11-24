@@ -18,7 +18,16 @@ class CoffeeBagScraper
   def scrape
     run_step("fetching") { page_content(url) }
       .then { |content| run_step("extracting") { OpenAi.new.message(content) } }
-      .then { |response| run_step("finalizing") { JSON.parse(response).compact_blank } }
+      .then { |response| run_step("finalizing") { self.class.parse_bag(response) } }
+  end
+
+  # The model has returned plain text instead of a JSON object before; a
+  # non-object payload is a handled failure, not a crash in the job.
+  def self.parse_bag(response)
+    parsed = JSON.parse(response)
+    raise ArgumentError, "The model did not return a coffee bag object" unless parsed.is_a?(Hash)
+
+    parsed.compact_blank
   end
 
   private
