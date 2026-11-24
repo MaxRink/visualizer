@@ -33,12 +33,12 @@ Rails.application.routes.draw do
   end
 
   get "auth/airtable/callback", to: "omniauth_callbacks#airtable"
-  get "auth/airtable", as: :connect_airtable
+  get "auth/airtable", to: "omniauth_callbacks#airtable_method_not_allowed", as: :connect_airtable
   get "auth/homelab_oidc/callback", as: :homelab_oidc_callback, to: "omniauth_callbacks#homelab_oidc"
   get "auth/homelab_oidc/link", to: "oidc_links#show", as: :homelab_oidc_link
   get "auth/homelab_oidc/link/:token", to: "oidc_links#confirm", as: :confirm_homelab_oidc_link
   get "auth/homelab_oidc", to: "omniauth_callbacks#homelab_oidc_method_not_allowed"
-  post "auth/homelab_oidc", as: :sign_in_with_homelab_oidc
+  post "auth/homelab_oidc", to: "omniauth_callbacks#homelab_oidc_unavailable", as: :sign_in_with_homelab_oidc
   get "auth/failure", to: "sessions#omniauth_failure"
 
   namespace :api do
