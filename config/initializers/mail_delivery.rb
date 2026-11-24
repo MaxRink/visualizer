@@ -15,3 +15,9 @@ Rails.application.config.after_initialize do
     and password-reset mail and cannot start without a working transport.
   MESSAGE
 end
+
+# A relay timeout is transient: retry the delivery later instead of dropping
+# the mail as a failed job.
+Rails.application.config.after_initialize do
+  ActionMailer::MailDeliveryJob.retry_on Net::OpenTimeout, Net::ReadTimeout, wait: :polynomially_longer, attempts: 5
+end

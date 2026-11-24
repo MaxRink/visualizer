@@ -70,7 +70,11 @@ Rails.application.configure do
       password: ENV["SMTP_PASSWORD"],
       authentication: :plain,
       ssl: smtp_tls,
-      enable_starttls_auto: !smtp_tls
+      enable_starttls_auto: !smtp_tls,
+      # Mail's 5 s defaults time out against a relay that is slow to answer
+      # during a burst of upload notifications.
+      open_timeout: 15,
+      read_timeout: 30
     }
   else
     config.action_mailer.delivery_method = :postmark
