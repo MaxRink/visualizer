@@ -85,4 +85,44 @@ class PublicShotTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to new_session_url
   end
+
+  test "a signed-in non-owner cannot share someone else's shot" do
+    sign_in(create(:user))
+
+    assert_no_difference "SharedShot.count" do
+      get share_shot_url(@shot)
+    end
+    assert_response :not_found
+
+    delete session_url
+    get shot_url(@shot)
+    assert_response :not_found
+  end
+
+  test "anonymous visitors cannot compare private shots" do
+    other = create(:shot, user: @owner, public: false)
+
+    get compare_url(@shot, other)
+    assert_response :not_found
+
+    @shot.update!(public: true)
+    get compare_url(@shot, other)
+    assert_response :not_found
+  end
+
+  test "anonymous visitors can compare shared and public shots" do
+    create(:shared_shot, shot: @shot, code: "EEEE", created_at: 10.minutes.ago)
+    other = create(:shot, user: create(:user), public: true)
+
+    get compare_url(@shot, other)
+
+    assert_response :success
+    assert_includes response.body, "Comparison"
+  end
+
+  private
+
+  def compare_url(shot, comparison)
+    "#{shot_url(shot)}/compare/#{comparison.id}"
+  end
 end

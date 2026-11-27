@@ -109,6 +109,36 @@ class Shot::GrindSuggestableTest < ActiveSupport::TestCase
     assert_nil shot.reload.grind_suggestion
   end
 
+  test "a malformed payload keeps the previous suggestion" do
+    shot = create_shot(grinder_setting: "18", duration: 15)
+    shot.update_column(:grind_suggestion, {"label" => "Finer"}) # rubocop:disable Rails/SkipsModelValidations
+
+    with_evaluate({"answers" => "plain text", "model" => "model"}) { shot.suggest_grind_now }
+
+    assert_equal "Finer", shot.reload.grind_suggestion["label"]
+  end
+
+  test "a string puck_issue drops only the puck hint" do
+    shot = create_shot(grinder_setting: "18", duration: 15)
+
+    with_evaluate({"answers" => {"adjustment" => {"probabilities" => {"1" => 0.9}}, "puck_issue" => "yes"}, "model" => "model"}) do
+      shot.suggest_grind_now
+    end
+
+    assert_equal "Finer", shot.reload.grind_suggestion["label"]
+    assert_nil shot.grind_suggestion["puck_issue"]
+  end
+
+  test "non-numeric probabilities do not raise" do
+    shot = create_shot(grinder_setting: "18", duration: 15)
+
+    with_evaluate({"answers" => {"adjustment" => {"probabilities" => {"1" => "0.9", "2" => [1]}}, "puck_issue" => ["x"]}, "model" => "model"}) do
+      shot.suggest_grind_now
+    end
+
+    assert_equal "Not sure", shot.reload.grind_suggestion["label"]
+  end
+
   test "accepts a well-formed answers hash" do
     shot = create_shot(grinder_setting: "18", duration: 15)
 

@@ -1,11 +1,11 @@
 class OpenAi
   class NotConfigured < StandardError; end
 
-  # AI calls in this deployment go through the LiteLLM gateway. The base URL
-  # and model stay configurable so a vanilla instance can point elsewhere
-  # (e.g. https://api.openai.com/v1); the key stays optional, and without it
-  # the lookup reports NotConfigured and the UI hides the button.
-  DEFAULT_BASE_URL = "http://192.168.1.104:30681/v1".freeze
+  # OPENAI_BASE_URL points the lookup at another OpenAI-compatible gateway
+  # (e.g. an in-cluster LiteLLM). Plain HTTP is only allowed to a private
+  # address, so the key never crosses a public network in cleartext. Without a
+  # key the lookup reports NotConfigured and the UI hides the button.
+  DEFAULT_BASE_URL = "https://api.openai.com/v1".freeze
   DEFAULT_MODEL = "auto/fast".freeze
   SYSTEM_PROMPT = Rails.root.join("app/prompts/coffee_bag_scraper.txt").read.freeze
   # Gateway throttling (429), provider overload (503/529) and short outages are
@@ -37,6 +37,8 @@ class OpenAi
     raise NotConfigured, "Coffee info lookup is not configured on this instance." unless self.class.configured?
 
     uri = URI(self.class.endpoint)
+    raise ArgumentError, "OPENAI_BASE_URL must be HTTPS or a private HTTP address" unless SystemOne.secure_or_private?(uri)
+
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = uri.scheme == "https"
     request = Net::HTTP::Post.new(uri.request_uri)
@@ -53,10 +55,11 @@ class OpenAi
 
     response = http.request(request)
     unless response.is_a?(Net::HTTPSuccess)
-      details = response.body.presence || response.message
+      # Status only: the gateway's error body can echo request details and is
+      # broadcast to the browser by CoffeeBagScrapeJob.
       request_id = response["x-request-id"]
       suffix = request_id.present? ? " (request_id: #{request_id})" : ""
-      raise "Failed to get an inference response: #{response.code} #{details}#{suffix}"
+      raise "Failed to get an inference response: #{response.code}#{suffix}"
     end
 
     JSON.parse(response.body).dig("choices", 0, "message", "content").to_s

@@ -76,6 +76,23 @@ class SystemOneTest < ActiveSupport::TestCase
     assert_requested(:post, ENDPOINT, times: SystemOne::MAX_ATTEMPTS)
   end
 
+  test "walks untrusted answers without raising on strings or arrays" do
+    answers = {"similar" => "coffee_0", "relative_0" => {"probabilities" => {"0" => 0.7, "1" => "high", "2" => nil}}, "list" => [1]}
+
+    assert_nil SystemOne.answer(answers, "similar", "probabilities")
+    assert_nil SystemOne.answer(answers, "list", "probabilities")
+    assert_nil SystemOne.probabilities(answers, "similar", "probabilities")
+    assert_equal({"0" => 0.7}, SystemOne.probabilities(answers, "relative_0", "probabilities"))
+  end
+
+  test "a single-attempt client does not retry" do
+    stub_request(:post, ENDPOINT).to_return(status: 503, body: "untrusted detail")
+
+    assert_raises(SystemOne::Throttled) { client(**SystemOne::INTERACTIVE).evaluate(state: {}, questions: []) }
+
+    assert_requested(:post, ENDPOINT, times: 1)
+  end
+
   test "throttling that outlasts the retries raises Throttled for a later job retry" do
     stub_request(:post, ENDPOINT).to_return(status: 429, body: "untrusted detail")
     throttled = client
@@ -89,7 +106,7 @@ class SystemOneTest < ActiveSupport::TestCase
 
   private
 
-  def client(api_endpoint: ENDPOINT)
-    SystemOne.new(api_endpoint:, model: "coffee-bag-vision", api_key: "synthetic-key")
+  def client(api_endpoint: ENDPOINT, **options)
+    SystemOne.new(api_endpoint:, model: "coffee-bag-vision", api_key: "synthetic-key", **options)
   end
 end

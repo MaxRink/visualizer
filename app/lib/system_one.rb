@@ -14,13 +14,43 @@ class SystemOne
   MAX_REQUEST_BYTES = ENV.fetch("VISUALIZER_INFERENCE_MAX_REQUEST_BYTES", 128 * 1024).to_i
   MAX_RESPONSE_BYTES = ENV.fetch("VISUALIZER_INFERENCE_MAX_RESPONSE_BYTES", 64 * 1024).to_i
   MAX_COMPLETION_TOKENS = ENV.fetch("VISUALIZER_INFERENCE_MAX_COMPLETION_TOKENS", 512).to_i
+  READ_TIMEOUT = 30
+  # A web request waits on the answer, so it gets one short attempt; the jobs
+  # keep the retries.
+  INTERACTIVE = {max_attempts: 1, read_timeout: 15}.freeze
 
   def self.configured?
     ENV_KEYS.all? { ENV[it].present? }
   end
 
-  def initialize(api_endpoint: ENV.fetch("VISUALIZER_INFERENCE_BASE_URL"), model: ENV.fetch("VISUALIZER_INFERENCE_MODEL"), api_key: ENV.fetch("VISUALIZER_INFERENCE_API_KEY"))
+  # Model output is untrusted: walk it without Hash#dig, which raises when a
+  # string or array sits in the path.
+  def self.answer(node, *path)
+    path.reduce(node) { |value, key| value.is_a?(Hash) ? value[key] : nil }
+  end
+
+  # The probabilities object at path with only numeric values, or nil when the
+  # path does not lead to an object.
+  def self.probabilities(node, *path)
+    found = answer(node, *path)
+    found.select { |_, probability| probability.is_a?(Numeric) } if found.is_a?(Hash)
+  end
+
+  # HTTPS anywhere, plain HTTP only to a private address (an in-cluster gateway).
+  def self.secure_or_private?(uri)
+    uri.is_a?(URI::HTTPS) || (uri.is_a?(URI::HTTP) && private_ip?(uri.host))
+  end
+
+  def self.private_ip?(host)
+    IPAddr.new(host).private?
+  rescue IPAddr::InvalidAddressError
+    false
+  end
+
+  def initialize(api_endpoint: ENV.fetch("VISUALIZER_INFERENCE_BASE_URL"), model: ENV.fetch("VISUALIZER_INFERENCE_MODEL"), api_key: ENV.fetch("VISUALIZER_INFERENCE_API_KEY"), max_attempts: MAX_ATTEMPTS, read_timeout: READ_TIMEOUT)
     @uri = validated_uri(api_endpoint)
+    @max_attempts = max_attempts
+    @read_timeout = read_timeout
     @model = model
     @api_key = api_key
     raise Error, "VISUALIZER_INFERENCE_MODEL is empty" if @model.blank?
@@ -53,7 +83,7 @@ class SystemOne
 
   def validated_uri(value)
     uri = URI.parse(value)
-    valid_scheme = uri.is_a?(URI::HTTPS) || (uri.is_a?(URI::HTTP) && private_ip?(uri.host))
+    valid_scheme = self.class.secure_or_private?(uri)
     valid_path = uri.path == "/v1/chat/completions" && uri.userinfo.nil? && uri.query.nil? && uri.fragment.nil?
     raise Error, "VISUALIZER_INFERENCE_BASE_URL must be HTTPS or a private HTTP Chat Completions endpoint" unless valid_scheme && valid_path
 
@@ -62,25 +92,19 @@ class SystemOne
     raise Error, "VISUALIZER_INFERENCE_BASE_URL is invalid"
   end
 
-  def private_ip?(host)
-    IPAddr.new(host).private?
-  rescue IPAddr::InvalidAddressError
-    false
-  end
-
   def request_with_retry(body)
     attempt = 0
     loop do
       attempt += 1
       status, response_body = post(body)
       return JSON.parse(response_body) if status.between?(200, 299)
-      if attempt >= MAX_ATTEMPTS || RETRYABLE_CODES.exclude?(status.to_s)
+      if attempt >= @max_attempts || RETRYABLE_CODES.exclude?(status.to_s)
         raise THROTTLED_CODES.include?(status.to_s) ? Throttled : Error, "LiteLLM HTTP #{status}"
       end
 
       sleep(2**(attempt - 1))
     rescue Net::OpenTimeout, Net::ReadTimeout, EOFError, SocketError, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EHOSTUNREACH, OpenSSL::SSL::SSLError => error
-      raise Error, "LiteLLM request failed (#{error.class})" if attempt >= MAX_ATTEMPTS
+      raise Error, "LiteLLM request failed (#{error.class})" if attempt >= @max_attempts
 
       sleep(2**(attempt - 1))
     end
@@ -97,7 +121,7 @@ class SystemOne
     http = Net::HTTP.new(@uri.host, @uri.port)
     http.use_ssl = @uri.is_a?(URI::HTTPS)
     http.open_timeout = 5
-    http.read_timeout = 30
+    http.read_timeout = @read_timeout
     http.write_timeout = 10
     http.start do |connection|
       connection.request(request) do |response|

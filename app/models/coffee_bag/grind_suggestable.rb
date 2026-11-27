@@ -24,13 +24,13 @@ class CoffeeBag
       after_commit :suggest_grind_later, on: %i[create update], if: :grind_suggestion_needed?
     end
 
-    def suggest_grind
+    def suggest_grind(**inference)
       profiles = recent_profiles
       shots_by_profile = dialed_in_shots(profiles).group_by { [it.profile_title, it.grinder_model] }
       own = profiles.index_with { |profile| shots_by_profile[profile.values].to_a.find { it.coffee_bag_id == id } }
       candidates = profiles.reject { own[it] }.index_with { candidate_shots(shots_by_profile[it.values].to_a) }
       bags = candidates.values.flat_map { it.map(&:coffee_bag) }.uniq
-      answers = bags.any? ? SystemOne.new.evaluate(state: similarity_state(bags), questions: similarity_questions(bags))["answers"] : {}
+      answers = bags.any? ? SystemOne.new(**inference).evaluate(state: similarity_state(bags), questions: similarity_questions(bags))["answers"] : {}
 
       suggestions = profiles.filter_map do |profile|
         if own[profile]
@@ -95,9 +95,9 @@ class CoffeeBag
     end
 
     def from_similar_bag(profile, shots, bags, answers)
-      similarity = answers.dig("similar", "probabilities").to_h
+      similarity = SystemOne.probabilities(answers, "similar", "probabilities").to_h
       shot = shots.max_by { similarity.fetch("coffee_#{bags.index(it.coffee_bag)}", 0) }
-      probabilities = answers.dig("relative_#{bags.index(shot.coffee_bag)}", "probabilities").to_h.transform_keys(&:to_i)
+      probabilities = SystemOne.probabilities(answers, "relative_#{bags.index(shot.coffee_bag)}", "probabilities").to_h.transform_keys(&:to_i)
       direction, probability = DIRECTION_LEVELS.transform_values { |levels| levels.sum { probabilities.fetch(it, 0) } }.max_by(&:last)
       level = DIRECTION_LEVELS[direction].max_by { probabilities.fetch(it, 0) }
       base_suggestion(profile, shot).merge("based_on" => shot.coffee_bag.name, "relation" => (RELATIVE_LABELS[level] if probability >= MIN_DIRECTION_PROBABILITY))

@@ -3,11 +3,11 @@ require "test_helper"
 class OpenAiTest < ActiveSupport::TestCase
   ENV_KEYS = %w[OPENAI_API_KEY OPENAI_BASE_URL OPENAI_MODEL].freeze
 
-  test "defaults to the LiteLLM gateway and the auto/fast group" do
+  test "defaults to the OpenAI API and the auto/fast group" do
     without_env do
-      assert_equal "http://192.168.1.104:30681/v1", OpenAi.base_url
+      assert_equal "https://api.openai.com/v1", OpenAi.base_url
       assert_equal "auto/fast", OpenAi.model
-      assert_equal "http://192.168.1.104:30681/v1/chat/completions", OpenAi.endpoint
+      assert_equal "https://api.openai.com/v1/chat/completions", OpenAi.endpoint
       assert_not OpenAi.configured?
     end
   end
@@ -38,7 +38,17 @@ class OpenAiTest < ActiveSupport::TestCase
       error = assert_raises(RuntimeError) { OpenAi.new.message("page text") }
 
       assert_match "400", error.message
+      assert_no_match "bad request", error.message
       assert_requested(request, times: 1)
+    end
+  end
+
+  test "refuses to send the key over plain HTTP to a public address" do
+    with_env("OPENAI_API_KEY" => "synthetic-key", "OPENAI_BASE_URL" => "http://203.0.113.10/v1") do
+      error = assert_raises(ArgumentError) { OpenAi.new.message("page text") }
+
+      assert_match "OPENAI_BASE_URL", error.message
+      assert_not_requested(:post, "http://203.0.113.10/v1/chat/completions")
     end
   end
 
