@@ -19,6 +19,17 @@ class SystemOne
     ENV_KEYS.all? { ENV[it].present? }
   end
 
+  # HTTPS anywhere, plain HTTP only to a private address (an in-cluster gateway).
+  def self.secure_or_private?(uri)
+    uri.is_a?(URI::HTTPS) || (uri.is_a?(URI::HTTP) && private_ip?(uri.host))
+  end
+
+  def self.private_ip?(host)
+    IPAddr.new(host).private?
+  rescue IPAddr::InvalidAddressError
+    false
+  end
+
   def initialize(api_endpoint: ENV.fetch("VISUALIZER_INFERENCE_BASE_URL"), model: ENV.fetch("VISUALIZER_INFERENCE_MODEL"), api_key: ENV.fetch("VISUALIZER_INFERENCE_API_KEY"))
     @uri = validated_uri(api_endpoint)
     @model = model
@@ -53,19 +64,13 @@ class SystemOne
 
   def validated_uri(value)
     uri = URI.parse(value)
-    valid_scheme = uri.is_a?(URI::HTTPS) || (uri.is_a?(URI::HTTP) && private_ip?(uri.host))
+    valid_scheme = self.class.secure_or_private?(uri)
     valid_path = uri.path == "/v1/chat/completions" && uri.userinfo.nil? && uri.query.nil? && uri.fragment.nil?
     raise Error, "VISUALIZER_INFERENCE_BASE_URL must be HTTPS or a private HTTP Chat Completions endpoint" unless valid_scheme && valid_path
 
     uri
   rescue URI::InvalidURIError
     raise Error, "VISUALIZER_INFERENCE_BASE_URL is invalid"
-  end
-
-  def private_ip?(host)
-    IPAddr.new(host).private?
-  rescue IPAddr::InvalidAddressError
-    false
   end
 
   def request_with_retry(body)
