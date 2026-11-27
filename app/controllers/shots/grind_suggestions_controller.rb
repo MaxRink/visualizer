@@ -15,7 +15,7 @@ module Shots
 
     def create
       @shot = Current.user.shots.find(params.expect(:shot_id))
-      @shot.suggest_grind_now
+      @shot.suggest_grind_now(**SystemOne::INTERACTIVE)
       render_suggestion
     rescue *RESCUABLE_ERRORS => e
       # Status code only: never the prompt or the model's response body.

@@ -36,10 +36,12 @@ class Shot
       GrindSuggestionJob.perform_later(self)
     end
 
-    def suggest_grind_now
+    def suggest_grind_now(**inference)
       reference = reference_target
-      response = SystemOne.new.evaluate(state: grind_suggestion_state(reference), questions: QUESTIONS)
-      update_column(:grind_suggestion, grind_suggestion_from(response)) # rubocop:disable Rails/SkipsModelValidations
+      response = SystemOne.new(**inference).evaluate(state: grind_suggestion_state(reference), questions: QUESTIONS)
+      # A malformed answer keeps the previous suggestion instead of erasing it.
+      suggestion = grind_suggestion_from(response)
+      update_column(:grind_suggestion, suggestion) if suggestion # rubocop:disable Rails/SkipsModelValidations
       broadcast_replace_to [self, :grind_suggestion], target: ActionView::RecordIdentifier.dom_id(self, :grind_suggestion), partial: "shots/grind_suggestion", locals: {shot: self}
       broadcast_journal_grind_suggestion
       coffee_bag&.suggest_grind_later
@@ -123,7 +125,7 @@ class Shot
 
     # The inference endpoint has returned answers as a plain string before, so
     # every step is checked instead of trusting Hash#dig. A malformed payload
-    # means "no suggestion", which the UI already shows as the Suggest link.
+    # means "no new suggestion": the previous one (or the Suggest link) stays.
     def suggestion_probabilities(response)
       answers = response.is_a?(Hash) ? response["answers"] : nil
       adjustment = answers.is_a?(Hash) ? answers["adjustment"] : nil

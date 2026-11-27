@@ -82,6 +82,22 @@ class Shots::GrindSuggestionsControllerTest < ActionDispatch::IntegrationTest
     previous&.each { |key, value| ENV[key] = value }
   end
 
+  test "the web request asks for a single short inference attempt" do
+    received = nil
+    original = SystemOne.method(:new)
+    SystemOne.define_singleton_method(:new) do |**options|
+      received = options
+      raise SystemOne::Error, "LiteLLM HTTP 503"
+    end
+
+    post shot_grind_suggestion_path(@shot), as: :turbo_stream
+
+    assert_response :success
+    assert_equal SystemOne::INTERACTIVE, received
+  ensure
+    SystemOne.define_singleton_method(:new, original)
+  end
+
   private
 
   def assert_unavailable(error, log_fragment)

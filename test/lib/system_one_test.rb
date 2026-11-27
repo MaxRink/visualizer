@@ -76,6 +76,14 @@ class SystemOneTest < ActiveSupport::TestCase
     assert_requested(:post, ENDPOINT, times: SystemOne::MAX_ATTEMPTS)
   end
 
+  test "a single-attempt client does not retry" do
+    stub_request(:post, ENDPOINT).to_return(status: 503, body: "untrusted detail")
+
+    assert_raises(SystemOne::Throttled) { client(**SystemOne::INTERACTIVE).evaluate(state: {}, questions: []) }
+
+    assert_requested(:post, ENDPOINT, times: 1)
+  end
+
   test "throttling that outlasts the retries raises Throttled for a later job retry" do
     stub_request(:post, ENDPOINT).to_return(status: 429, body: "untrusted detail")
     throttled = client
@@ -89,7 +97,7 @@ class SystemOneTest < ActiveSupport::TestCase
 
   private
 
-  def client(api_endpoint: ENDPOINT)
-    SystemOne.new(api_endpoint:, model: "coffee-bag-vision", api_key: "synthetic-key")
+  def client(api_endpoint: ENDPOINT, **options)
+    SystemOne.new(api_endpoint:, model: "coffee-bag-vision", api_key: "synthetic-key", **options)
   end
 end

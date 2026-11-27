@@ -6,7 +6,7 @@ module CoffeeBags
     def create
       @coffee_bag = Current.user.coffee_bags.find(params.expect(:coffee_bag_id))
       begin
-        @coffee_bag.suggest_grind
+        @coffee_bag.suggest_grind(**SystemOne::INTERACTIVE)
       rescue *Shots::GrindSuggestionsController::RESCUABLE_ERRORS => e
         Rails.logger.warn("grind suggestion unavailable coffee_bag=#{@coffee_bag.id} error=#{e.class}: #{e.message.to_s.truncate(200)}")
       end

@@ -24,13 +24,13 @@ class CoffeeBag
       after_commit :suggest_grind_later, on: %i[create update], if: :grind_suggestion_needed?
     end
 
-    def suggest_grind
+    def suggest_grind(**inference)
       profiles = recent_profiles
       shots_by_profile = dialed_in_shots(profiles).group_by { [it.profile_title, it.grinder_model] }
       own = profiles.index_with { |profile| shots_by_profile[profile.values].to_a.find { it.coffee_bag_id == id } }
       candidates = profiles.reject { own[it] }.index_with { candidate_shots(shots_by_profile[it.values].to_a) }
       bags = candidates.values.flat_map { it.map(&:coffee_bag) }.uniq
-      answers = bags.any? ? SystemOne.new.evaluate(state: similarity_state(bags), questions: similarity_questions(bags))["answers"] : {}
+      answers = bags.any? ? SystemOne.new(**inference).evaluate(state: similarity_state(bags), questions: similarity_questions(bags))["answers"] : {}
 
       suggestions = profiles.filter_map do |profile|
         if own[profile]
