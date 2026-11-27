@@ -123,26 +123,19 @@ class Shot
       end
     end
 
-    # The inference endpoint has returned answers as a plain string before, so
-    # every step is checked instead of trusting Hash#dig. A malformed payload
-    # means "no new suggestion": the previous one (or the Suggest link) stays.
-    def suggestion_probabilities(response)
-      answers = response.is_a?(Hash) ? response["answers"] : nil
-      adjustment = answers.is_a?(Hash) ? answers["adjustment"] : nil
-      probabilities = adjustment.is_a?(Hash) ? adjustment["probabilities"] : nil
-
-      probabilities if probabilities.is_a?(Hash)
-    end
-
+    # The inference endpoint has returned answers as a plain string before. A
+    # malformed adjustment means "no new suggestion": the previous one (or the
+    # Suggest link) stays. A malformed puck_issue only drops the puck hint.
     def grind_suggestion_from(response)
-      probabilities = suggestion_probabilities(response)
+      probabilities = SystemOne.probabilities(response, "answers", "adjustment", "probabilities")
       return unless probabilities
 
       probabilities = probabilities.transform_keys(&:to_i)
+      puck_issue = SystemOne.answer(response, "answers", "puck_issue", "noul")
       direction, probability = DIRECTION_LEVELS.transform_values { |levels| levels.sum { probabilities.fetch(it, 0) } }.max_by(&:last)
       suggestion = {
         "probability" => probability.round(2),
-        "puck_issue" => response.dig("answers", "puck_issue", "noul"),
+        "puck_issue" => (puck_issue if puck_issue.is_a?(Numeric)),
         "model" => response["model"],
         "generated_at" => Time.current.iso8601
       }

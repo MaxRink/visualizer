@@ -95,9 +95,9 @@ class CoffeeBag
     end
 
     def from_similar_bag(profile, shots, bags, answers)
-      similarity = answers.dig("similar", "probabilities").to_h
+      similarity = SystemOne.probabilities(answers, "similar", "probabilities").to_h
       shot = shots.max_by { similarity.fetch("coffee_#{bags.index(it.coffee_bag)}", 0) }
-      probabilities = answers.dig("relative_#{bags.index(shot.coffee_bag)}", "probabilities").to_h.transform_keys(&:to_i)
+      probabilities = SystemOne.probabilities(answers, "relative_#{bags.index(shot.coffee_bag)}", "probabilities").to_h.transform_keys(&:to_i)
       direction, probability = DIRECTION_LEVELS.transform_values { |levels| levels.sum { probabilities.fetch(it, 0) } }.max_by(&:last)
       level = DIRECTION_LEVELS[direction].max_by { probabilities.fetch(it, 0) }
       base_suggestion(profile, shot).merge("based_on" => shot.coffee_bag.name, "relation" => (RELATIVE_LABELS[level] if probability >= MIN_DIRECTION_PROBABILITY))

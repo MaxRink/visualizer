@@ -23,6 +23,19 @@ class SystemOne
     ENV_KEYS.all? { ENV[it].present? }
   end
 
+  # Model output is untrusted: walk it without Hash#dig, which raises when a
+  # string or array sits in the path.
+  def self.answer(node, *path)
+    path.reduce(node) { |value, key| value.is_a?(Hash) ? value[key] : nil }
+  end
+
+  # The probabilities object at path with only numeric values, or nil when the
+  # path does not lead to an object.
+  def self.probabilities(node, *path)
+    found = answer(node, *path)
+    found.select { |_, probability| probability.is_a?(Numeric) } if found.is_a?(Hash)
+  end
+
   # HTTPS anywhere, plain HTTP only to a private address (an in-cluster gateway).
   def self.secure_or_private?(uri)
     uri.is_a?(URI::HTTPS) || (uri.is_a?(URI::HTTP) && private_ip?(uri.host))
