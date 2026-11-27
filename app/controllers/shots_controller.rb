@@ -6,7 +6,7 @@ class ShotsController < ApplicationController
   before_action :require_authentication, except: %i[show compare image]
   before_action :load_shot, only: %i[show compare share beanconqueror image]
   before_action :create_shared_shot, only: %i[share beanconqueror]
-  before_action :require_viewable_shot, only: %i[show image]
+  before_action :require_viewable_shot, only: %i[show compare image]
   before_action :load_users_shot, only: %i[edit update remove_image destroy]
   before_action :load_coffee_bags_for_form, only: :edit
   before_action :load_users_shots, only: %i[index search]
@@ -36,6 +36,8 @@ class ShotsController < ApplicationController
 
   def compare
     @comparison = Shot.find(params[:comparison])
+    return head :not_found unless viewable?(@comparison)
+
     @chart = ShotChartCompare.new(@shot, @comparison, Current.user)
   rescue ActiveRecord::RecordNotFound
     flash[:alert] = "Comparison shot not found!"
@@ -168,30 +170,20 @@ class ShotsController < ApplicationController
     redirect_to :root, alert: "Shot not found!"
   end
 
-  # Signed-in users keep the old behaviour. Anonymous visitors only see shots
-  # that are public (community) or have a share row within the share TTL.
-  def require_viewable_shot
-    return if Current.user
-    return if @shot.public?
-    return if @shot.shared_shots.exists?(created_at: Limits.share_ttl.ago..)
-
-    head :not_found
-  end
-
   def load_users_shot
     @shot = Current.user.shots.with_notes.find(params[:id])
   rescue ActiveRecord::RecordNotFound
     redirect_to shots_path, alert: "Shot not found!"
   end
 
+  def require_viewable_shot
+    head :not_found unless viewable?(@shot)
+  end
+
   # Signed-in users keep the old behaviour. Anonymous visitors only see shots
   # that are public (community) or have a share row within the share TTL.
-  def require_viewable_shot
-    return if Current.user
-    return if @shot.public?
-    return if @shot.shared_shots.exists?(created_at: Limits.share_ttl.ago..)
-
-    head :not_found
+  def viewable?(shot)
+    Current.user.present? || shot.public? || shot.shared_shots.exists?(created_at: Limits.share_ttl.ago..)
   end
 
   def load_users_shots
@@ -244,7 +236,9 @@ class ShotsController < ApplicationController
   end
 
   def create_shared_shot
-    head :not_found unless @shot.user_id == Current.user.id
+    # Without the return the share row is still saved and the shot opens to
+    # anonymous visitors; only the owner may share.
+    return head(:not_found) unless @shot.user_id == Current.user.id
 
     @shared_shot = SharedShot.find_or_initialize_by(shot: @shot, user: Current.user)
     @shared_shot.created_at = Time.current

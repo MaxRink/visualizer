@@ -74,7 +74,8 @@ class ShotsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "compare renders the copy URL button for signed-in and signed-out viewers" do
-    comparison = create(:shot, user: @user, duration: 30)
+    @shot.update!(public: true)
+    comparison = create(:shot, user: @user, duration: 30, public: true)
     url = "#{shot_url(@shot)}/compare/#{comparison.id}"
 
     get url
